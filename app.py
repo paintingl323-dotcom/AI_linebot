@@ -84,54 +84,54 @@ def index():
     from flask import redirect, url_for
     return redirect(url_for('admin.dashboard'))
 
-if __name__ == '__main__':
-    # Create tables and initialize data
-    with app.app_context():
-        # Create tables if they don't exist
-        db.create_all()
+# Create tables and initialize data on startup
+with app.app_context():
+    # Create tables if they don't exist
+    db.create_all()
+    
+    # Create initial admin user if no users exist
+    if not User.query.first():
+        from werkzeug.security import generate_password_hash
+        admin = User(
+            username="admin",
+            email="admin@example.com",
+            password_hash=generate_password_hash("admin"),
+            is_admin=True
+        )
+        db.session.add(admin)
         
-        # Create initial admin user if no users exist
-        if not User.query.first():
-            from werkzeug.security import generate_password_hash
-            admin = User(
-                username="admin",
-                email="admin@example.com",
-                password_hash=generate_password_hash("admin"),
-                is_admin=True
-            )
-            db.session.add(admin)
-            
-            # Create default bot styles
-            default_styles = [
-                BotStyle(name="貼心", prompt="你是小艾，艾可公司的首位AI智能小編，熱情活潑，充滿正能量，總是用繁體中文交談，給人鼓勵與關懷。", is_default=True),
-                BotStyle(name="風趣", prompt="你是一位風趣幽默的小艾，擅長用輕鬆詼諧的語調回答問題，回應中帶有俏皮的繁體中文表達方式，但不失專業與幫助性。"),
-                BotStyle(name="正式", prompt="你是小艾，一位非常專業的助理，使用正式、商務化的繁體中文進行溝通，提供精確的資訊和適當的建議。"),
-                BotStyle(name="專業", prompt="你是小艾，一位技術專家助理，提供詳細、專業的繁體中文回應，使用特定的技術術語和全面的解釋，讓用戶對技術問題有更深入的理解。"),
-            ]
-            for style in default_styles:
-                db.session.add(style)
-            
-            # Create default config values
-            default_configs = [
-                Config(key="GEMINI_TEMPERATURE", value="0.7"),
-                Config(key="GEMINI_MAX_TOKENS", value="500"),
-                Config(key="LINE_CHANNEL_ID", value=""),
-                Config(key="LINE_CHANNEL_SECRET", value=""),
-                Config(key="LINE_CHANNEL_ACCESS_TOKEN", value=""),
-                Config(key="ACTIVE_BOT_STYLE", value="貼心"),
-                Config(key="RAG_ENABLED", value="False"),
-            ]
-            for config in default_configs:
-                db.session.add(config)
-            
-            db.session.commit()
-            logger.info("Created initial admin user and default settings")
+        # Create default bot styles
+        default_styles = [
+            BotStyle(name="貼心", prompt="你是小艾，艾可公司的首位AI智能小編，熱情活潑，充滿正能量，總是用繁體中文交談，給人鼓勵與關懷。", is_default=True),
+            BotStyle(name="風趣", prompt="你是一位風趣幽默的小艾，擅長用輕鬆詼諧的語調回答問題，回應中帶有俏皮的繁體中文表達方式，但不失專業與幫助性。"),
+            BotStyle(name="正式", prompt="你是小艾，一位非常專業的助理，使用正式、商務化的繁體中文進行溝通，提供精確的資訊和適當的建議。"),
+            BotStyle(name="專業", prompt="你是小艾，一位技術專家助理，提供詳細、專業的繁體中文回應，使用特定的技術術語和全面的解釋，讓用戶對技術問題有更深入的理解。"),
+        ]
+        for style in default_styles:
+            db.session.add(style)
+        
+        # Create default config values
+        default_configs = [
+            Config(key="GEMINI_TEMPERATURE", value="0.7"),
+            Config(key="GEMINI_MAX_TOKENS", value="500"),
+            Config(key="LINE_CHANNEL_ID", value=""),
+            Config(key="LINE_CHANNEL_SECRET", value=""),
+            Config(key="LINE_CHANNEL_ACCESS_TOKEN", value=""),
+            Config(key="ACTIVE_BOT_STYLE", value="貼心"),
+            Config(key="RAG_ENABLED", value="False"),
+        ]
+        for config in default_configs:
+            db.session.add(config)
+        
+        db.session.commit()
+        logger.info("Created initial admin user and default settings")
 
-    # Create knowledge_base directory if it doesn't exist
-    import os
-    if not os.path.exists(os.environ.get('KNOWLEDGE_BASE_DIR', 'knowledge_base')):
-        os.makedirs(os.environ.get('KNOWLEDGE_BASE_DIR', 'knowledge_base'))
-        logger.info("Created knowledge_base directory")
+# Create knowledge_base directory if it doesn't exist
+if not os.path.exists(os.environ.get('KNOWLEDGE_BASE_DIR', 'knowledge_base')):
+    os.makedirs(os.environ.get('KNOWLEDGE_BASE_DIR', 'knowledge_base'))
+    logger.info("Created knowledge_base directory")
+
+if __name__ == '__main__':
 
     logger.info("Application initialization complete")
     
