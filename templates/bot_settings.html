@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}機器人設定{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">LINE 機器人設定</h1>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">機器人設定</h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('admin.bot_settings') }}" method="POST">
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        <label for="channel_id" class="form-label">Channel ID</label>
+                        {{ form.channel_id(class="form-control", id="channel_id", required=True) }}
+                        <div class="form-text">您的 LINE Messaging API channel ID</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="channel_secret" class="form-label">Channel Secret</label>
+                        {{ form.channel_secret(class="form-control", id="channel_secret", required=True) }}
+                        <div class="form-text">您的 LINE Messaging API channel secret</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="channel_access_token" class="form-label">Channel Access Token</label>
+                        {{ form.channel_access_token(class="form-control", id="channel_access_token", required=True) }}
+                        <div class="form-text">您的 LINE Messaging API channel access token</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="active_style" class="form-label">預設回應風格</label>
+                        {{ form.active_style(class="form-select", id="active_style", required=True) }}
+                        <div class="form-text">機器人的預設回應風格</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="ignored_keywords" class="form-label">忽略關鍵字 (Ignored Keywords)</label>
+                        {{ form.ignored_keywords(class="form-control", id="ignored_keywords", rows="3",
+                        placeholder="輸入要忽略的關鍵字，用逗號分隔。例如：品牌小故事,逛逛購物官網") }}
+                        <div class="form-text">當用戶發送這些關鍵字時，機器人將不會回應 (用於避開圖文選單按鈕的自動觸發)。</div>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        {{ form.rag_enabled(class="form-check-input", id="rag_enabled") }}
+                        <label class="form-check-label" for="rag_enabled">啟用知識庫增強生成 (RAG)</label>
+                        <div class="form-text">啟用後，機器人回應會基於知識庫中的文件內容</div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="submit" class="btn btn-primary">儲存設定</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card bg-dark">
+            <div class="card-header">
+                <h5 class="mb-0">Webhook URL</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-2">在您的 LINE 開發者控制台中使用以下網址：</p>
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" id="webhookUrl" value="{{ request.host_url }}webhook"
+                        readonly>
+                    <button class="btn btn-outline-secondary" type="button" id="copyWebhook"
+                        onclick="copyWebhookUrl()">複製</button>
+                </div>
+                <p class="small text-muted mb-0">這是 LINE 用來發送訊息到您的機器人的網址。</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function copyWebhookUrl() {
+        var copyText = document.getElementById("webhookUrl");
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(copyText.value);
+
+        var copyBtn = document.getElementById("copyWebhook");
+        copyBtn.innerHTML = "已複製!";
+        setTimeout(function () {
+            copyBtn.innerHTML = "複製";
+        }, 2000);
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}新增回應風格{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">新增回應風格</h1>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">新風格</h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('admin.add_bot_style') }}" method="POST">
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        <label for="name" class="form-label">風格名稱</label>
+                        {{ form.name(class="form-control", id="name", required=True) }}
+                        <div class="form-text">為您的風格取一個獨特的名稱</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="prompt" class="form-label">系統提示詞</label>
+                        {{ form.prompt(class="form-control", id="prompt", rows="8", required=True) }}
+                        <div class="form-text">定義此風格行為的系統提示詞</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">描述</label>
+                        {{ form.description(class="form-control", id="description", rows="3") }}
+                        <div class="form-text">此風格的簡短描述（選填）</div>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        {{ form.is_default(class="form-check-input", id="is_default") }}
+                        <label class="form-check-label" for="is_default">設為預設風格</label>
+                        <div class="form-text">如果勾選，這個風格將成為所有新對話的預設風格</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('admin.bot_styles') }}" class="btn btn-secondary me-md-2">取消</a>
+                        <button type="submit" class="btn btn-primary">儲存風格</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">預設模板</h5>
+            </div>
+            <div class="card-body">
+                <p>從這些預設模板中選擇：</p>
+                <div class="mb-3">
+                    <button type="button" class="btn btn-outline-secondary template-btn" onclick="loadTemplate('conversational')">預設</button>
+                    <button type="button" class="btn btn-outline-secondary template-btn" onclick="loadTemplate('creative')">風趣</button>
+                    <button type="button" class="btn btn-outline-secondary template-btn" onclick="loadTemplate('professional')">正式</button>
+                    <button type="button" class="btn btn-outline-secondary template-btn" onclick="loadTemplate('technical')">專業</button>
+                    <button type="button" class="btn btn-outline-secondary template-btn" onclick="loadTemplate('friendly')">友善</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function loadTemplate(template) {
+    let prompt = '';
+    let description = '';
+    
+    switch(template) {
+        case 'conversational':
+            prompt = '你是小艾，艾可公司的首位AI智能小編，熱情活潑，充滿正能量，總是用繁體中文交談，給人鼓勵與關懷。';
+            description = '預設風格，溫暖親切的對話夥伴，用簡單親切的口吻陪伴用戶聊天。';
+            break;
+        case 'professional':
+            prompt = '你是小艾，艾可公司的首位AI智能小編，具備專業知識與分析能力，總是用繁體中文交談。你對於各種專業領域的話題有深入的理解，回答時重點清晰、資訊詳實，確保提供有價值的見解與參考資料。';
+            description = '正式的商務風格，提供專業的回答和建議，適合商務和正式場合。';
+            break;
+        case 'creative':
+            prompt = '你是小艾，艾可公司的首位AI智能小編，擁有機智幽默的性格，總是用繁體中文交談。你的回應活潑、帶點俏皮，喜歡用風趣的語氣與對方互動，適時丟出梗，讓對話充滿笑聲與趣味感。';
+            description = '風趣幽默的對話風格，讓聊天充滿樂趣和輕鬆的氛圍。';
+            break;
+        case 'friendly':
+            prompt = '你是小艾，艾可公司的首位AI智能小編，熱情活潑，充滿正能量，總是用繁體中文交談，給人鼓勵與關懷。';
+            description = '友善溫暖的對話風格，給用戶帶來積極的能量和支持。';
+            break;
+        case 'technical':
+            prompt = '你是小艾，艾可公司的首位AI智能小編，擅長條理清晰、嚴謹細膩的表達方式，總是用繁體中文交談。你重視邏輯與準確性，在回答問題時會給出完整的解釋，確保每一句話都清楚且有條理。';
+            description = '技術專家風格，提供詳細的技術解釋和專業知識支持。';
+            break;
+        default:
+            return;
+    }
+    
+    document.getElementById('prompt').value = prompt;
+    document.getElementById('description').value = description;
+}
+</script>
+{% endblock %}

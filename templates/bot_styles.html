@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}回應風格{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>回應風格</h1>
+    <a href="{{ url_for('admin.add_bot_style') }}" class="btn btn-primary">新增風格</a>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">可用風格</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>風格名稱</th>
+                                <th>描述</th>
+                                <th>預設</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for style in styles %}
+                            <tr>
+                                <td>{{ style.name }}</td>
+                                <td>{{ style.prompt | truncate(50) }}</td>
+                                <td>
+                                    {% if style.is_default %}
+                                    <span class="badge bg-success">是</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">否</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-info" 
+                                            data-bs-toggle="modal" data-bs-target="#viewStyleModal"
+                                            data-style-name="{{ style.name }}"
+                                            data-style-prompt="{{ style.prompt }}">
+                                        查看
+                                    </button>
+                                    <a href="{{ url_for('admin.edit_bot_style', style_id=style.id) }}" class="btn btn-sm btn-outline-primary">
+                                        編輯
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center py-3">尚未建立任何機器人風格</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Style Modal -->
+<div class="modal fade" id="viewStyleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewStyleTitle">查看風格</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h6>風格名稱:</h6>
+                <p id="viewStyleName"></p>
+                
+                <h6>提示詞:</h6>
+                <pre id="viewStylePrompt" class="p-3 bg-dark text-light rounded"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const viewStyleModal = document.getElementById('viewStyleModal');
+    if (viewStyleModal) {
+        viewStyleModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const styleName = button.getAttribute('data-style-name');
+            const stylePrompt = button.getAttribute('data-style-prompt');
+            
+            document.getElementById('viewStyleName').textContent = styleName;
+            document.getElementById('viewStylePrompt').textContent = stylePrompt;
+            document.getElementById('viewStyleTitle').textContent = '查看風格: ' + styleName;
+        });
+    }
+});
+</script>
+{% endblock %}

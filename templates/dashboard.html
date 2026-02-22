@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+
+{% block title %}儀表板{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-5 border-bottom pb-3"
+    style="border-color: #000 !important;">
+    <h1 class="mb-0 border-0 pb-0">儀表板</h1>
+    <div class="text-end">
+        <small class="d-block text-uppercase" style="letter-spacing: 0.1em;">狀態</small>
+        <span class="badge bg-dark rounded-0 px-3 py-2">系統運作中</span>
+    </div>
+</div>
+
+<!-- Stats Grid - Geometric Layout -->
+<div class="row g-4 mb-5">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div>
+                <div class="d-flex justify-content-between">
+                    <h5>總訊息數</h5>
+                    <div class="bauhaus-shape-square"></div>
+                </div>
+                <h2 class="display-4 fw-bold mt-3">{{ total_messages }}</h2>
+            </div>
+            <div class="mt-4 pt-3 border-top border-dark">
+                <small class="text-uppercase" style="letter-spacing: 0.05em;">已處理總數</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card" style="background-color: #000; color: #fff;">
+            <div>
+                <div class="d-flex justify-content-between">
+                    <h5 class="text-white">用戶輸入</h5>
+                    <div class="bauhaus-shape-circle" style="background-color: #fff;"></div>
+                </div>
+                <h2 class="display-4 fw-bold mt-3">{{ user_messages }}</h2>
+            </div>
+            <div class="mt-4 pt-3 border-top border-white">
+                <small class="text-uppercase text-white-50" style="letter-spacing: 0.05em;">收到提問</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div>
+                <div class="d-flex justify-content-between">
+                    <h5>機器人回應</h5>
+                    <div class="bauhaus-shape-triangle"></div>
+                </div>
+                <h2 class="display-4 fw-bold mt-3">{{ bot_messages }}</h2>
+            </div>
+            <div class="mt-4 pt-3 border-top border-dark">
+                <small class="text-uppercase" style="letter-spacing: 0.05em;">AI 生成</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-md-12">
+        <div class="card border-dark rounded-0">
+            <div class="card-header bg-transparent border-bottom border-dark py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">近期活動</h5>
+                    <a href="{{ url_for('admin.message_history') }}"
+                        class="btn btn-sm btn-outline-dark rounded-0 text-uppercase" style="font-size: 0.7rem;">查看全部</a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr class="bg-light">
+                                <th class="border-bottom border-dark">用戶 ID</th>
+                                <th class="border-bottom border-dark">類型</th>
+                                <th class="border-bottom border-dark">訊息內容</th>
+                                <th class="border-bottom border-dark">風格</th>
+                                <th class="border-bottom border-dark text-end">時間</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for message in recent_messages %}
+                            <tr>
+                                <td class="font-monospace">{{ message.line_user_id[:8] }}...</td>
+                                <td>
+                                    {% if message.is_user_message %}
+                                    <span class="badge bg-transparent text-dark border border-dark rounded-0">用戶</span>
+                                    {% else %}
+                                    <span class="badge bg-dark rounded-0">機器人</span>
+                                    {% endif %}
+                                </td>
+                                <td class="view-message" style="max-width: 400px;">{{ message.message_text }}</td>
+                                <td class="text-uppercase">{{ message.bot_style or '-' }}</td>
+                                <td class="text-end font-monospace small">{{ message.timestamp.strftime('%H:%M ·
+                                    %Y-%m-%d') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-5 text-muted fst-italic">尚無近期活動</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <h4 class="mb-4 pb-2 border-bottom border-dark">系統控制</h4>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <a href="{{ url_for('admin.bot_settings') }}" class="text-decoration-none">
+            <div class="card h-100 hover-effect">
+                <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-1">LINE 設定</h4>
+                        <p class="text-muted mb-0 small">頻道與憑證</p>
+                    </div>
+                    <i class="fas fa-arrow-right fa-lg"></i>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <a href="{{ url_for('admin.llm_settings') }}" class="text-decoration-none">
+            <div class="card h-100 hover-effect">
+                <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-1">AI 模型設定</h4>
+                        <p class="text-muted mb-0 small">GEMINI API 參數</p>
+                    </div>
+                    <i class="fas fa-arrow-right fa-lg"></i>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <a href="{{ url_for('admin.bot_styles') }}" class="text-decoration-none">
+            <div class="card h-100 hover-effect">
+                <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-1">角色風格</h4>
+                        <p class="text-muted mb-0 small">回應行為設定</p>
+                    </div>
+                    <i class="fas fa-arrow-right fa-lg"></i>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <a href="{{ url_for('admin.knowledge_base') }}" class="text-decoration-none">
+            <div class="card h-100 hover-effect">
+                <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-1">知識庫</h4>
+                        <p class="text-muted mb-0 small">RAG 資料管理</p>
+                    </div>
+                    <i class="fas fa-arrow-right fa-lg"></i>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}

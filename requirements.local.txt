@@ -1,0 +1,13 @@
+flask
+flask-login
+flask-sqlalchemy
+flask-wtf
+gunicorn
+line-bot-sdk
+numpy
+google-generativeai
+sqlalchemy
+werkzeug
+wtforms
+email-validator
+faiss-cpu

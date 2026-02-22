@@ -1,0 +1,365 @@
+/**
+ * AI Line Bot Custom CSS
+ * Style: Minimalist, Bauhaus, High-end Crypto
+ */
+
+:root {
+    --bg-color: #FFFFF0;
+    /* Ivory White */
+    --card-bg: #FFFFFF;
+    /* Pure White */
+    --text-color: #000000;
+    /* Pitch Black */
+    --border-color: #000000;
+    /* Pitch Black Borders */
+    --accent-color: #000000;
+    /* Black Accent */
+    --secondary-color: #555555;
+    /* Dark Grey for secondary text */
+    --success-color: #000000;
+    /* Black for success in this style */
+    --danger-color: #FF2E2E;
+    /* Bauhaus Red */
+    --warning-color: #FFD700;
+    /* Bauhaus Yellow */
+    --info-color: #1E90FF;
+    /* Bauhaus Blue */
+    --font-primary: 'Inter', 'Helvetica Neue', 'Arial', sans-serif;
+    --border-width: 1px;
+    --spacing-unit: 1.5rem;
+}
+
+/* Global Styles */
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+main {
+    flex: 1 0 auto;
+    padding-top: 2rem;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+}
+
+h1 {
+    font-size: 2.5rem;
+    border-bottom: var(--border-width) solid var(--border-color);
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+}
+
+a {
+    color: var(--text-color);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    transition: all 0.2s ease;
+}
+
+a:hover {
+    color: var(--text-color);
+    background-color: transparent;
+    text-decoration-thickness: 2px;
+}
+
+/* Navbar Styles */
+.navbar {
+    background-color: var(--card-bg) !important;
+    border-bottom: var(--border-width) solid var(--border-color);
+    padding: 1rem 0;
+}
+
+.navbar-brand {
+    font-weight: 900;
+    font-size: 1.75rem;
+    /* Reduced from 4rem */
+    color: var(--text-color) !important;
+    letter-spacing: -0.02em;
+    text-transform: none;
+    border: none;
+    padding: 0;
+    line-height: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.navbar-brand small {
+    font-size: 1rem !important;
+    /* Reduced from 2rem */
+    font-weight: 500 !important;
+    color: #888;
+    letter-spacing: 0;
+}
+
+.nav-link {
+    color: var(--text-color) !important;
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 1.3rem;
+    /* Increased from 0.85rem */
+    letter-spacing: 0.05em;
+    margin-left: 1rem;
+    position: relative;
+    padding: 0.5rem 0 !important;
+}
+
+.nav-link::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: 0;
+    left: 0;
+    background-color: var(--text-color);
+    transition: width 0.3s ease;
+}
+
+.nav-link:hover::after,
+.nav-link.active::after {
+    width: 100%;
+}
+
+.nav-link.active {
+    font-weight: 700;
+}
+
+/* Card Styles */
+.card {
+    background-color: var(--card-bg);
+    border: var(--border-width) solid var(--border-color);
+    border-radius: 0;
+    /* No rounded corners */
+    box-shadow: none !important;
+    /* Flat design */
+    margin-bottom: var(--spacing-unit);
+    transition: transform 0.2s ease;
+}
+
+.card:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 6px 6px 0px rgba(0, 0, 0, 1) !important;
+    /* Sharp hard shadow on hover */
+}
+
+.card-header {
+    background-color: transparent;
+    border-bottom: var(--border-width) solid var(--border-color);
+    padding: 1rem 1.5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.9rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* Dashboard Stats */
+.stat-card {
+    border: var(--border-width) solid var(--border-color);
+    padding: 2rem;
+    background-color: var(--card-bg);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+    background-color: var(--text-color);
+    color: var(--card-bg);
+    transform: translate(-4px, -4px);
+    box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.2) !important;
+}
+
+.stat-card:hover h5,
+.stat-card:hover h2,
+.stat-card:hover .text-muted {
+    color: var(--card-bg) !important;
+}
+
+.stat-card h5 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1rem;
+    color: var(--secondary-color);
+}
+
+.stat-card h2 {
+    font-size: 3rem;
+    font-weight: 900;
+    margin: 0;
+    line-height: 1;
+}
+
+/* Buttons */
+.btn {
+    border: var(--border-width) solid var(--border-color);
+    border-radius: 0;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 0.6rem 1.5rem;
+    letter-spacing: 0.05em;
+    transition: all 0.2s ease;
+    box-shadow: none;
+}
+
+.btn-primary {
+    background-color: var(--text-color);
+    color: var(--bg-color);
+    border-color: var(--text-color);
+}
+
+.btn-primary:hover {
+    background-color: transparent;
+    color: var(--text-color);
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
+}
+
+.btn-secondary,
+.btn-light {
+    background-color: transparent;
+    color: var(--text-color);
+}
+
+.btn-secondary:hover,
+.btn-light:hover {
+    background-color: #f0f0f0;
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    border-color: var(--border-color);
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #ff5c5c;
+    border-color: var(--border-color);
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
+}
+
+/* Forms */
+.form-control,
+.form-select {
+    border: var(--border-width) solid var(--border-color);
+    border-radius: 0;
+    padding: 0.8rem;
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    box-shadow: none !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+    outline: 2px solid var(--text-color);
+    outline-offset: -2px;
+}
+
+/* Tables */
+.table {
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+
+.table th {
+    border-bottom: 2px solid var(--border-color);
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    padding: 1rem;
+}
+
+.table td {
+    border-bottom: 1px solid #e0e0e0;
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+/* Footer */
+.footer {
+    border-top: var(--border-width) solid var(--border-color);
+    background-color: var(--card-bg) !important;
+    padding: 2rem 0;
+    margin-top: 4rem;
+}
+
+/* Utilities */
+.bg-dark {
+    background-color: var(--text-color) !important;
+}
+
+.bg-primary {
+    background-color: var(--accent-color) !important;
+}
+
+.text-white {
+    color: #fff !important;
+}
+
+/* Custom Bauhaus Elements */
+.bauhaus-shape-circle {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: var(--text-color);
+    display: inline-block;
+}
+
+.bauhaus-shape-square {
+    width: 20px;
+    height: 20px;
+    background-color: var(--warning-color);
+    border: 1px solid var(--text-color);
+    display: inline-block;
+}
+
+.bauhaus-shape-triangle {
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 20px solid var(--danger-color);
+    display: inline-block;
+}
+
+/* Code blocks */
+pre,
+code {
+    font-family: 'Space Mono', 'Consolas', monospace;
+    background-color: #f4f4f4;
+    border: 1px solid #ddd;
+    border-radius: 0;
+    padding: 1rem;
+    color: var(--text-color);
+}

@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}知識庫管理 - FlyPig LINE 機器人後台{% endblock %}
+
+{% block content %}
+<h1 class="mb-4"><i class="fas fa-book me-2"></i>知識庫 (Knowledge Base)</h1>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Document List -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">知識庫文件列表</h5>
+                <div>
+                    <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal"
+                        data-bs-target="#addDocumentModal">
+                        <i class="fas fa-plus me-1"></i> 新增文件
+                    </button>
+                    <form method="POST" action="{{ url_for('admin.rebuild_index') }}" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-light">
+                            <i class="fas fa-sync me-1"></i> 重建索引
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>標題</th>
+                                <th>來源</th>
+                                <th>上傳日期</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for doc in documents %}
+                            <tr>
+                                <td>{{ doc.title }}</td>
+                                <td>{{ doc.filename if doc.filename else '直接輸入' }}</td>
+                                <td>{{ doc.uploaded_at.strftime('%Y-%m-%d') }}</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-primary view-document"
+                                            data-id="{{ doc.id }}" data-bs-toggle="modal"
+                                            data-bs-target="#viewDocumentModal" title="查看">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-danger delete-document"
+                                            data-id="{{ doc.id }}" data-title="{{ doc.title }}" data-bs-toggle="modal"
+                                            data-bs-target="#deleteDocumentModal" title="刪除">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center">知識庫中尚無文件</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0"><i class="fas fa-info-circle me-2"></i>關於 RAG</h5>
+            </div>
+            <div class="card-body">
+                <p>檢索增強生成 (RAG) 通過引用您的知識庫來增強機器人的回應能力。</p>
+                <p>當用戶提出問題時，系統會：</p>
+                <ol>
+                    <li>在知識庫中搜索相關信息</li>
+                    <li>檢索最相似的文件內容</li>
+                    <li>將此上下文提供給 AI 模型</li>
+                    <li>生成包含您自定義數據的回應</li>
+                </ol>
+                <p>這使您的機器人能夠根據您的文件提供準確、最新的特定主題資訊。</p>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning">
+                <h5 class="card-title mb-0"><i class="fas fa-lightbulb me-2"></i>文件提示</h5>
+            </div>
+            <div class="card-body">
+                <ul>
+                    <li>添加事實性、相關內容到知識庫</li>
+                    <li>將大型文件拆分為較小、專注的區塊</li>
+                    <li>使用描述文件內容的清晰標題</li>
+                    <li>添加多個文件後請重建索引</li>
+                    <li>支援的文件類型：TXT, PDF, DOCX, MD, CSV</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Document Modal -->
+<div class="modal fade" id="addDocumentModal" tabindex="-1" aria-labelledby="addDocumentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="addDocumentModalLabel">新增文件到知識庫</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin.add_document') }}" enctype="multipart/form-data">
+                {{ form.hidden_tag() }}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">文件標題</label>
+                        {{ form.title(class="form-control", id="title", placeholder="請輸入描述性標題") }}
+                        {% if form.title.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.title.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="content" class="form-label">文件內容 (可選)</label>
+                        {{ form.content(class="form-control", id="content", rows="8",
+                        placeholder="您可以直接在此輸入內容，或在下方上傳文件") }}
+                        <div class="form-text text-muted">
+                            直接輸入文件內容，或在下方上傳文件。
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="file" class="form-label">上傳文件 (可選)</label>
+                        {{ form.file(class="form-control", id="file") }}
+                        <div class="form-text text-muted">
+                            支援的文件類型：TXT, PDF, DOCX, MD, CSV (LINE 聊天記錄)
+                        </div>
+                        {% if form.file.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.file.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    {{ form.submit(class="btn btn-primary", value="新增文件") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- View Document Modal -->
+<div class="modal fade" id="viewDocumentModal" tabindex="-1" aria-labelledby="viewDocumentModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="viewDocumentModalLabel">文件內容</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h5 id="documentTitle" class="mb-3"></h5>
+                <div class="border rounded p-3 bg-light">
+                    <pre id="documentContent" class="mb-0" style="white-space: pre-wrap;"></pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Document Modal -->
+<div class="modal fade" id="deleteDocumentModal" tabindex="-1" aria-labelledby="deleteDocumentModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteDocumentModalLabel">確認刪除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>您確定要刪除文件 "<span id="deleteDocumentTitle"></span>" 嗎？</p>
+                <p class="text-danger">此操作無法復原。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form method="POST" action="" id="deleteDocumentForm">
+                    <button type="submit" class="btn btn-danger">刪除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/knowledge_base.js') }}"></script>
+{% endblock %}
