@@ -12,6 +12,19 @@
     </div>
 </div>
 
+{% if is_sqlite %}
+<div class="alert alert-warning border-dark rounded-0 mb-5 d-flex align-items-center" role="alert">
+    <div class="me-3">
+        <i class="fas fa-exclamation-triangle fa-2x"></i>
+    </div>
+    <div>
+        <h5 class="alert-heading fw-bold mb-1">注意：資料持久性風險</h5>
+        <p class="mb-0">當前正在使用 <strong>SQLite</strong> 儲存資料。在 Render 等平台上，這意味著<strong>每次重新部署時，您的知識庫資料都會消失</strong>。</p>
+        <p class="mb-0 mt-2">建議建立 **Render PostgreSQL** 資料庫並設定 `DATABASE_URL` 以永久保存資料。</p>
+    </div>
+</div>
+{% endif %}
+
 <!-- Stats Grid - Geometric Layout -->
 <div class="row g-4 mb-5">
     <div class="col-md-4">
