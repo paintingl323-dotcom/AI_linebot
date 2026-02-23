@@ -41,39 +41,53 @@ def date_test():
 @admin_required
 def dashboard():
     """Admin dashboard displaying system overview"""
-    # Get stats
-    user_count = LineUser.query.count()
-    message_count = ChatMessage.query.count()
-    document_count = Document.query.count()
-    
-    # Get recent messages
-    recent_messages = ChatMessage.query.order_by(ChatMessage.timestamp.desc()).limit(10).all()
-    
-    # Get active style
-    active_style_name = ConfigManager.get("ACTIVE_BOT_STYLE", "Default")
-    active_style = BotStyle.query.filter_by(name=active_style_name).first()
-    
-    # Get Gemini API key status
-    gemini_key = ConfigManager.get("GEMINI_API_KEY", "")
-    api_status = "Configured" if gemini_key else "Not Configured"
-    
-    # Get RAG status
-    rag_enabled = ConfigManager.get("RAG_ENABLED", "True") == "True"
-    
-    # Detect database type for persistence warning
-    is_sqlite = db.engine.url.drivername == 'sqlite'
-    
-    return render_template(
-        'dashboard.html',
-        user_count=user_count,
-        message_count=message_count,
-        document_count=document_count,
-        recent_messages=recent_messages,
-        active_style=active_style,
-        api_status=api_status,
-        rag_enabled=rag_enabled,
-        is_sqlite=is_sqlite
-    )
+    try:
+        # Get stats with safe fallbacks
+        total_messages = ChatMessage.query.count()
+        user_messages = ChatMessage.query.filter_by(is_user_message=True).count()
+        bot_messages = ChatMessage.query.filter_by(is_user_message=False).count()
+        
+        user_count = LineUser.query.count()
+        document_count = Document.query.count()
+        
+        # Get recent messages
+        recent_messages = ChatMessage.query.order_by(ChatMessage.timestamp.desc()).limit(10).all()
+        
+        # Get active style
+        active_style_name = ConfigManager.get("ACTIVE_BOT_STYLE", "Default")
+        active_style = BotStyle.query.filter_by(name=active_style_name).first()
+        
+        # Get Gemini API key status
+        gemini_key = ConfigManager.get("GEMINI_API_KEY", "")
+        api_status = "Configured" if gemini_key else "Not Configured"
+        
+        # Get RAG status
+        rag_enabled = ConfigManager.get("RAG_ENABLED", "True") == "True"
+        
+        # Detect database type for persistence warning
+        try:
+            is_sqlite = db.engine.url.drivername == 'sqlite'
+        except Exception:
+            is_sqlite = False
+        
+        return render_template(
+            'dashboard.html',
+            user_count=user_count,
+            total_messages=total_messages,
+            user_messages=user_messages,
+            bot_messages=bot_messages,
+            document_count=document_count,
+            recent_messages=recent_messages,
+            active_style=active_style,
+            api_status=api_status,
+            rag_enabled=rag_enabled,
+            is_sqlite=is_sqlite
+        )
+    except Exception as e:
+        logger.error(f"Error in dashboard route: {e}", exc_info=True)
+        # If it fails, render a minimal version or error page
+        return f"儀表板啟動失敗，請檢查日誌。錯誤內容: {str(e)}", 500
+
 
 # LLM Settings
 @admin_bp.route('/llm_settings', methods=['GET', 'POST'])
