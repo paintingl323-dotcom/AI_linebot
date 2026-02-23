@@ -235,7 +235,7 @@ def handle_text_message(event):
                     from models import Escalation
                     
                     # 1. Check Keywords
-                    trigger_keywords = ConfigManager.get("ESCALATION_KEYWORDS", "購買,下單,退貨,客服,購買方式")
+                    trigger_keywords = ConfigManager.get("ESCALATION_KEYWORDS", "購買,下單,匯款,轉帳,價格,多少錢,現貨,怎麼買,沒收到,寄錯,瑕疵,退貨,換貨,不滿,客服,找人,真人,聯絡我,緊急")
                     keywords = [k.strip() for k in trigger_keywords.replace("，", ",").split(",") if k.strip()]
                     
                     match = next((k for k in keywords if k in u_msg), None)
