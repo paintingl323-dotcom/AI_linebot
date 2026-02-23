@@ -11,7 +11,71 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize file upload functionality
     initFileUpload();
+
+    // Initialize status polling
+    initStatusPolling();
 });
+
+/**
+ * Status badge HTML for each state
+ */
+const STATUS_BADGES = {
+    learned: '<span class="badge bg-success">✅ 已學習</span>',
+    pending: '<span class="badge bg-warning text-dark">⏳ 等待中</span>',
+    no_content: '<span class="badge bg-danger">❌ 無內容</span>',
+};
+
+/**
+ * Fetch and update document learning statuses
+ */
+function refreshStatus() {
+    const btn = document.getElementById('refreshStatusBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.querySelector('i').classList.add('fa-spin');
+    }
+
+    fetch('/admin/knowledge_base/status')
+        .then(r => r.json())
+        .then(data => {
+            data.documents.forEach(doc => {
+                const cell = document.querySelector(`.doc-status[data-doc-id="${doc.id}"]`);
+                if (cell) {
+                    cell.innerHTML = STATUS_BADGES[doc.status] || doc.status;
+                }
+            });
+
+            // If there are pending docs, keep polling; otherwise stop
+            if (!data.has_pending && window._statusInterval) {
+                clearInterval(window._statusInterval);
+                window._statusInterval = null;
+            }
+        })
+        .catch(err => console.error('Status refresh error:', err))
+        .finally(() => {
+            if (btn) {
+                btn.disabled = false;
+                btn.querySelector('i').classList.remove('fa-spin');
+            }
+        });
+}
+
+/**
+ * Initialize auto-polling and refresh button
+ */
+function initStatusPolling() {
+    // Manual refresh button
+    const btn = document.getElementById('refreshStatusBtn');
+    if (btn) {
+        btn.addEventListener('click', refreshStatus);
+    }
+
+    // Auto-poll every 5 seconds if there are any pending documents
+    const hasPending = document.querySelector('.badge.bg-warning');
+    if (hasPending) {
+        window._statusInterval = setInterval(refreshStatus, 5000);
+    }
+}
 
 /**
  * Initialize the view document functionality

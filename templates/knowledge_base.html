@@ -16,9 +16,12 @@
                         data-bs-target="#addDocumentModal">
                         <i class="fas fa-plus me-1"></i> 新增文件
                     </button>
+                    <button type="button" class="btn btn-sm btn-light" id="refreshStatusBtn" title="刷新學習狀態">
+                        <i class="fas fa-sync-alt me-1"></i> 刷新狀態
+                    </button>
                     <form method="POST" action="{{ url_for('admin.rebuild_index') }}" class="d-inline">
                         <button type="submit" class="btn btn-sm btn-light">
-                            <i class="fas fa-sync me-1"></i> 重建索引
+                            <i class="fas fa-cogs me-1"></i> 重建索引
                         </button>
                     </form>
                 </div>
@@ -41,7 +44,7 @@
                                 <td>{{ doc.title }}</td>
                                 <td>{{ doc.filename if doc.filename else '直接輸入' }}</td>
                                 <td>{{ doc.uploaded_at.strftime('%Y-%m-%d') }}</td>
-                                <td>
+                                <td class="doc-status" data-doc-id="{{ doc.id }}">
                                     {% if doc.embedding_json %}
                                     <span class="badge bg-success">✅ 已學習</span>
                                     {% elif doc.content %}

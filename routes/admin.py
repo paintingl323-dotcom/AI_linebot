@@ -515,6 +515,24 @@ def view_document(doc_id):
         'content': document.content
     })
 
+@admin_bp.route('/knowledge_base/status')
+@admin_required
+def knowledge_base_status():
+    """Return JSON status of all documents for live polling."""
+    documents = Document.query.order_by(Document.uploaded_at.desc()).all()
+    result = []
+    for doc in documents:
+        if doc.embedding_json:
+            status = 'learned'
+        elif doc.content:
+            status = 'pending'
+        else:
+            status = 'no_content'
+        result.append({'id': doc.id, 'status': status})
+    
+    has_pending = any(d['status'] == 'pending' for d in result)
+    return jsonify({'documents': result, 'has_pending': has_pending})
+
 @admin_bp.route('/knowledge_base/rebuild_index', methods=['POST'])
 @admin_required
 def rebuild_index():
