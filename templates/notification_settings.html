@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+
+{% block title %}通知設定{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-5 border-bottom pb-3"
+    style="border-color: #000 !important;">
+    <h1 class="mb-0 border-0 pb-0">通知設定</h1>
+    <div class="text-end">
+        <small class="d-block text-uppercase" style="letter-spacing: 0.1em;">真人接手機制</small>
+        <span class="badge bg-dark rounded-0 px-3 py-2">郵件通知系統</span>
+    </div>
+</div>
+
+<div class="row g-5">
+    <div class="col-lg-8">
+        <div class="card border-dark rounded-0 h-100">
+            <div class="card-header bg-transparent border-bottom border-dark py-3">
+                <h5 class="mb-0">SMTP 與郵件設定</h5>
+            </div>
+            <div class="card-body p-4">
+                <form action="{{ url_for('admin.notification_settings') }}" method="POST">
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-4 form-check form-switch p-0 ps-5">
+                        {{ form.email_enabled(class="form-check-input", id="email_enabled") }}
+                        <label class="form-check-label fw-bold" for="email_enabled">啟用郵件通知功能</label>
+                        <div class="form-text">開啟後，系統將在觸發條件時自動發信給管理員。</div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <label for="admin_email" class="form-label fw-bold small text-uppercase">管理員收件信箱</label>
+                            {{ form.admin_email(class="form-control rounded-0 border-dark", id="admin_email",
+                            placeholder="your-email@example.com") }}
+                            <div class="form-text small">通知將發送至此信箱。</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <label for="smtp_server" class="form-label fw-bold small text-uppercase">SMTP 伺服器</label>
+                            {{ form.smtp_server(class="form-control rounded-0 border-dark", id="smtp_server") }}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="smtp_port" class="form-label fw-bold small text-uppercase">端口</label>
+                            {{ form.smtp_port(class="form-control rounded-0 border-dark", id="smtp_port") }}
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="smtp_user" class="form-label fw-bold small text-uppercase">SMTP 帳號</label>
+                            {{ form.smtp_user(class="form-control rounded-0 border-dark", id="smtp_user",
+                            placeholder="gmail-address@gmail.com") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="smtp_pass" class="form-label fw-bold small text-uppercase">SMTP 密碼
+                                (應用程式密碼)</label>
+                            {{ form.smtp_pass(class="form-control rounded-0 border-dark", id="smtp_pass") }}
+                            <div class="form-text small">若使用 Gmail，請務必使用「應用程式密碼」。</div>
+                        </div>
+                    </div>
+
+                    <hr class="my-5 border-dark">
+
+                    <div class="mb-4">
+                        <label for="escalation_keywords" class="form-label fw-bold small text-uppercase">觸發通知關鍵字</label>
+                        {{ form.escalation_keywords(class="form-control rounded-0 border-dark",
+                        id="escalation_keywords", rows="3") }}
+                        <div class="form-text small">當客人的訊息包含以上關鍵字時，系統會立即通知您。請以逗號分隔。</div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-5">
+                        <button type="button" id="testEmailBtn" class="btn btn-outline-dark rounded-0 px-4">
+                            <i class="fas fa-paper-plane me-2"></i> 發送測試郵件
+                        </button>
+                        <button type="submit" class="btn btn-dark rounded-0 px-5">儲存設定</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card border-dark rounded-0 bg-light">
+            <div class="card-header bg-dark text-white border-0 py-3 rounded-0">
+                <h5 class="mb-0 small text-uppercase">使用說明</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="mb-4">
+                    <h6 class="fw-bold"><i class="fas fa-info-circle me-2"></i> 如何獲取 Gmail 密碼？</h6>
+                    <p class="small text-muted">
+                        1. 登入 Google 帳號設定。<br>
+                        2. 開啟「兩階驗證」。<br>
+                        3. 搜尋「應用程式密碼」。<br>
+                        4. 產生一個新的密碼並貼回此設定頁面。
+                    </p>
+                </div>
+                <div class="mb-0">
+                    <h6 class="fw-bold"><i class="fas fa-bell me-2"></i> 什麼時候會收到通知？</h6>
+                    <p class="small text-muted mb-0">
+                        • 當訊息包含左側設定的關鍵字時。<br>
+                        • 當 AI 辨識出客人有退貨或購買意向時。<br>
+                        • 當 AI 表示無法處理，需要真人接手時。
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4 p-4 border border-dark text-center">
+            <div class="bauhaus-shape-triangle mx-auto mb-3"></div>
+            <p class="mb-0 small fw-bold text-uppercase">設計以人為本</p>
+            <p class="small text-muted mb-0">AI 輔助，真人決策。</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Test Result -->
+<div class="modal fade" id="testResultModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-0 border-dark">
+            <div class="modal-header border-bottom border-dark">
+                <h5 class="modal-title fw-bold">測試結果</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-4 text-center" id="testResultMessage">
+                <!-- Message content -->
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-dark rounded-0" data-bs-dismiss="modal">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('testEmailBtn').addEventListener('click', function () {
+        const btn = this;
+        const originalContent = btn.innerHTML;
+
+        // Disable and show loading
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>發送中...';
+
+        fetch('{{ url_for("admin.test_email") }}', {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                const messageEl = document.getElementById('testResultMessage');
+                if (data.success) {
+                    messageEl.innerHTML = `<i class="fas fa-check-circle text-success fa-3x mb-3"></i><p class="mb-0">${data.message}</p>`;
+                } else {
+                    messageEl.innerHTML = `<i class="fas fa-times-circle text-danger fa-3x mb-3"></i><p class="mb-0">${data.message}</p>`;
+                }
+                new bootstrap.Modal(document.getElementById('testResultModal')).show();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('發送請求時出錯，請稍後再試。');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+            });
+    });
+</script>
+{% endblock %}

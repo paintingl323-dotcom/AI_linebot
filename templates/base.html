@@ -44,6 +44,10 @@
                             href="{{ url_for('admin.message_history') }}">訊息記錄</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'admin.notification_settings' %}active{% endif %}"
+                            href="{{ url_for('admin.notification_settings') }}">通知設定</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'admin.knowledge_base' %}active{% endif %}"
                             href="{{ url_for('admin.knowledge_base') }}">知識庫</a>
                     </li>

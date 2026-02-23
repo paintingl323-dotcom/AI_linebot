@@ -140,17 +140,32 @@ try:
                 db.session.add(config)
             db.session.commit()
             logger.info("Created initial admin user and default settings")
-        else:
-            # Ensure RAG_ENABLED exists and is True (for existing deployments)
-            rag_config = Config.query.filter_by(key="RAG_ENABLED").first()
-            if not rag_config:
-                db.session.add(Config(key="RAG_ENABLED", value="True"))
-                db.session.commit()
-                logger.info("Migration: set RAG_ENABLED=True in config")
-            elif rag_config.value == "False":
-                rag_config.value = "True"
-                db.session.commit()
-                logger.info("Migration: updated RAG_ENABLED from False to True")
+        # Ensure RAG_ENABLED exists and is True (for existing deployments)
+        rag_config = Config.query.filter_by(key="RAG_ENABLED").first()
+        if not rag_config:
+            db.session.add(Config(key="RAG_ENABLED", value="True"))
+            logger.info("Migration: set RAG_ENABLED=True in config")
+        elif rag_config.value == "False":
+            rag_config.value = "True"
+            logger.info("Migration: updated RAG_ENABLED from False to True")
+        
+        db.session.commit()
+        
+        # Ensure Email Notification settings exist
+        email_configs = {
+            "EMAIL_NOTIFICATIONS_ENABLED": "False",
+            "ADMIN_EMAIL": "",
+            "SMTP_SERVER": "smtp.gmail.com",
+            "SMTP_PORT": "587",
+            "SMTP_USER": "",
+            "SMTP_PASS": "",
+            "ESCALATION_KEYWORDS": "購買,下單,退貨,客服,購買方式"
+        }
+        for key, default_val in email_configs.items():
+            if not Config.query.filter_by(key=key).first():
+                db.session.add(Config(key=key, value=default_val))
+                logger.info(f"Migration: added {key} to config")
+        db.session.commit()
 except Exception as e:
     logger.error(f"Error during startup initialization: {e}")
 

@@ -58,6 +58,20 @@ class BotSettingsForm(FlaskForm):
     rag_enabled = BooleanField('Enable RAG (Retrieval Augmented Generation)')
     submit = SubmitField('Save Settings')
 
+class EmailSettingsForm(FlaskForm):
+    """Form for Email Notification settings"""
+    email_enabled = BooleanField('啟用郵件通知')
+    admin_email = StringField('管理員收件信箱', validators=[Optional(), Email()])
+    smtp_server = StringField('SMTP 伺服器', validators=[Optional()], default='smtp.gmail.com')
+    smtp_port = IntegerField('SMTP 端口', validators=[Optional()], default=587)
+    smtp_user = StringField('SMTP 帳號 (發件人)', validators=[Optional()])
+    smtp_pass = PasswordField('SMTP 密碼 (應用程式密碼)', validators=[Optional()])
+    escalation_keywords = TextAreaField('觸發通知關鍵字', validators=[Optional()], 
+                                     render_kw={"placeholder": "例如：購買,下單,退貨,客服,購買方式"})
+    submit = SubmitField('儲存通知設定')
+
+
+
 class DocumentForm(FlaskForm):
     """Form for adding documents to the knowledge base"""
     title = StringField('Document Title', validators=[DataRequired()])

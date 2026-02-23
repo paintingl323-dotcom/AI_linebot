@@ -309,6 +309,61 @@ def message_history():
     
     return render_template('message_history.html', messages=messages, users=users, current_user_id=user_id)
 
+@admin_bp.route('/notification_settings', methods=['GET', 'POST'])
+@admin_required
+def notification_settings():
+    """Admin page for configuring email notifications and escalation"""
+    form = EmailSettingsForm()
+    
+    # Pre-fill form with current settings
+    if request.method == 'GET':
+        form.email_enabled.data = ConfigManager.get("EMAIL_NOTIFICATIONS_ENABLED", "False") == "True"
+        form.admin_email.data = ConfigManager.get("ADMIN_EMAIL", "")
+        form.smtp_server.data = ConfigManager.get("SMTP_SERVER", "smtp.gmail.com")
+        form.smtp_port.data = int(ConfigManager.get("SMTP_PORT", "587"))
+        form.smtp_user.data = ConfigManager.get("SMTP_USER", "")
+        form.smtp_pass.data = ConfigManager.get("SMTP_PASS", "")
+        form.escalation_keywords.data = ConfigManager.get("ESCALATION_KEYWORDS", "購買,下單,退貨,客服,購買方式")
+    
+    # Process form submission
+    if form.validate_on_submit():
+        ConfigManager.set("EMAIL_NOTIFICATIONS_ENABLED", str(form.email_enabled.data))
+        ConfigManager.set("ADMIN_EMAIL", form.admin_email.data or "")
+        ConfigManager.set("SMTP_SERVER", form.smtp_server.data or "smtp.gmail.com")
+        ConfigManager.set("SMTP_PORT", str(form.smtp_port.data or 587))
+        ConfigManager.set("SMTP_USER", form.smtp_user.data or "")
+        
+        # Only update password if provided
+        if form.smtp_pass.data:
+            ConfigManager.set("SMTP_PASS", form.smtp_pass.data)
+            
+        ConfigManager.set("ESCALATION_KEYWORDS", form.escalation_keywords.data or "")
+        
+        flash('通知設定已更新。', 'success')
+        return redirect(url_for('admin.notification_settings'))
+        
+    return render_template('notification_settings.html', form=form)
+
+@admin_bp.route('/notification_settings/test', methods=['POST'])
+@admin_required
+def test_email():
+    """Send a test email to verify SMTP settings"""
+    from services.email_service import EmailService
+    
+    admin_email = ConfigManager.get("ADMIN_EMAIL", "")
+    if not admin_email:
+        return jsonify({"success": False, "message": "請先設定管理員收件信箱。"})
+        
+    success = EmailService.send_email(
+        "測試郵件 (Test Email)", 
+        "這是一封來自 LazyBot 的測試郵件。如果您收到這封信，代表您的 SMTP 設定正確！"
+    )
+    
+    if success:
+        return jsonify({"success": True, "message": f"測試郵件已發送至 {admin_email}"})
+    else:
+        return jsonify({"success": False, "message": "發送失敗，請檢查 SMTP 設定與密碼。"})
+
 # Knowledge Base
 @admin_bp.route('/knowledge_base')
 @admin_required
