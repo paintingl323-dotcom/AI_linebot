@@ -330,36 +330,48 @@ def message_history():
 @admin_required
 def notification_settings():
     """Admin page for configuring email notifications and escalation"""
-    form = EmailSettingsForm()
-    
-    # Pre-fill form with current settings
-    if request.method == 'GET':
-        form.email_enabled.data = ConfigManager.get("EMAIL_NOTIFICATIONS_ENABLED", "False") == "True"
-        form.admin_email.data = ConfigManager.get("ADMIN_EMAIL", "")
-        form.smtp_server.data = ConfigManager.get("SMTP_SERVER", "smtp.gmail.com")
-        form.smtp_port.data = int(ConfigManager.get("SMTP_PORT", "587"))
-        form.smtp_user.data = ConfigManager.get("SMTP_USER", "")
-        form.smtp_pass.data = ConfigManager.get("SMTP_PASS", "")
-        form.escalation_keywords.data = ConfigManager.get("ESCALATION_KEYWORDS", "購買,下單,退貨,客服,購買方式")
-    
-    # Process form submission
-    if form.validate_on_submit():
-        ConfigManager.set("EMAIL_NOTIFICATIONS_ENABLED", str(form.email_enabled.data))
-        ConfigManager.set("ADMIN_EMAIL", form.admin_email.data or "")
-        ConfigManager.set("SMTP_SERVER", form.smtp_server.data or "smtp.gmail.com")
-        ConfigManager.set("SMTP_PORT", str(form.smtp_port.data or 587))
-        ConfigManager.set("SMTP_USER", form.smtp_user.data or "")
+    try:
+        form = EmailSettingsForm()
         
-        # Only update password if provided
-        if form.smtp_pass.data:
-            ConfigManager.set("SMTP_PASS", form.smtp_pass.data)
+        # Pre-fill form with current settings
+        if request.method == 'GET':
+            form.email_enabled.data = ConfigManager.get("EMAIL_NOTIFICATIONS_ENABLED", "False") == "True"
+            form.admin_email.data = ConfigManager.get("ADMIN_EMAIL", "")
+            form.smtp_server.data = ConfigManager.get("SMTP_SERVER", "smtp.gmail.com")
             
-        ConfigManager.set("ESCALATION_KEYWORDS", form.escalation_keywords.data or "")
+            # Safe conversion for port
+            smtp_port_val = ConfigManager.get("SMTP_PORT", "587")
+            try:
+                form.smtp_port.data = int(smtp_port_val) if smtp_port_val else 587
+            except (ValueError, TypeError):
+                form.smtp_port.data = 587
+                
+            form.smtp_user.data = ConfigManager.get("SMTP_USER", "")
+            form.smtp_pass.data = ConfigManager.get("SMTP_PASS", "")
+            form.escalation_keywords.data = ConfigManager.get("ESCALATION_KEYWORDS", "購買,下單,退貨,客服,購買方式")
         
-        flash('通知設定已更新。', 'success')
-        return redirect(url_for('admin.notification_settings'))
-        
-    return render_template('notification_settings.html', form=form)
+        # Process form submission
+        if form.validate_on_submit():
+            ConfigManager.set("EMAIL_NOTIFICATIONS_ENABLED", str(form.email_enabled.data))
+            ConfigManager.set("ADMIN_EMAIL", form.admin_email.data or "")
+            ConfigManager.set("SMTP_SERVER", form.smtp_server.data or "smtp.gmail.com")
+            ConfigManager.set("SMTP_PORT", str(form.smtp_port.data or 587))
+            ConfigManager.set("SMTP_USER", form.smtp_user.data or "")
+            
+            # Only update password if provided
+            if form.smtp_pass.data:
+                ConfigManager.set("SMTP_PASS", form.smtp_pass.data)
+                
+            ConfigManager.set("ESCALATION_KEYWORDS", form.escalation_keywords.data or "")
+            
+            flash('通知設定已更新。', 'success')
+            return redirect(url_for('admin.notification_settings'))
+            
+        return render_template('notification_settings.html', form=form)
+    except Exception as e:
+        logger.error(f"Error in notification_settings route: {e}", exc_info=True)
+        return f"通知設定頁面啟動失敗，錯誤內容: {str(e)}", 500
+
 
 @admin_bp.route('/notification_settings/test', methods=['POST'])
 @admin_required

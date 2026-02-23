@@ -43,6 +43,20 @@ def check_db():
         return False
     return True
 
+def check_forms():
+    logger.info("Checking form instantiation...")
+    try:
+        from forms import EmailSettingsForm
+        from app import app
+        with app.app_context():
+            # This will fail if dependencies like email-validator are missing
+            form = EmailSettingsForm()
+            logger.info("✅ EmailSettingsForm instantiated successfully")
+    except Exception as e:
+        logger.error(f"❌ Form instantiation failed: {e}")
+        return False
+    return True
+
 if __name__ == "__main__":
     logger.info("=== STARTING RIGOROUS SANITY CHECK ===")
     
@@ -50,8 +64,13 @@ if __name__ == "__main__":
     if not check_imports():
         sys.exit(1)
         
-    # 2. Check DB (Note: this will use local sqlite unless DATABASE_URL is set env)
+    # 2. Check Forms (Catch missing validators)
+    if not check_forms():
+        sys.exit(1)
+        
+    # 3. Check DB
     if not check_db():
         logger.warning("DB check failed (might be expected if DATABASE_URL is not set locally)")
     
     logger.info("=== SANITY CHECK COMPLETED ===")
+
