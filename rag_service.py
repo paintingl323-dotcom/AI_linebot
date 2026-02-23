@@ -269,27 +269,35 @@ class RAGService:
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def get_context_for_query(query, top_k=3, min_score=0.3):
+    def get_context_for_query(query, top_k=5, min_score=0.1):
         """Return a formatted context string for the top matching documents.
         
         Returns None (not an empty string) when RAG is disabled or no match found.
         """
         if not is_rag_enabled():
+            logger.info("RAG is disabled, skipping context retrieval")
             return None
 
         results = RAGService.search_similar(query, top_k=top_k)
         if not results:
+            logger.info("RAG search returned no results at all")
             return None
+
+        # Log all scores for debugging
+        for doc, score in results:
+            logger.info(f"RAG match: '{doc.title}' score={score:.4f} (min={min_score})")
 
         # Filter by minimum similarity
         relevant = [(doc, score) for doc, score in results if score >= min_score]
         if not relevant:
+            logger.info(f"All RAG results below min_score={min_score}")
             return None
 
+        logger.info(f"RAG returning {len(relevant)} relevant documents")
         context_parts = []
         for doc, score in relevant:
             context_parts.append(
-                f"[來源: {doc.title}]\n{doc.content[:1500]}"
+                f"[來源: {doc.title} (相似度: {score:.2f})]\n{doc.content[:2000]}"
             )
 
         return "\n\n---\n\n".join(context_parts)

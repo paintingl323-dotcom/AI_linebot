@@ -106,7 +106,16 @@ class LLMService:
         
         # Add RAG context if available
         if rag_context:
-            system_prompt += f"\n\nHere is some additional context that might be helpful: {rag_context}"
+            system_prompt += f"""
+
+【重要 - 知識庫參考資料】
+以下是從知識庫中檢索到的相關資料，你**必須優先參考**這些內容來回答用戶的問題。
+請根據這些資料提供具體、有內容的回答，不要只給空泛的回覆。
+如果資料中包含可以回答用戶問題的訊息，請直接引用並整理成有用的回答。
+
+{rag_context}
+
+【注意】請基於以上知識庫資料回答，提供具體的產品資訊和功能說明。"""
         
         # Build the full prompt for Gemini
         full_prompt = f"{system_prompt}\n\n用戶: {user_message}\n\n助手:"
