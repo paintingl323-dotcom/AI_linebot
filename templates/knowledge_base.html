@@ -31,6 +31,7 @@
                                 <th>標題</th>
                                 <th>來源</th>
                                 <th>上傳日期</th>
+                                <th>學習狀態</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
@@ -40,6 +41,15 @@
                                 <td>{{ doc.title }}</td>
                                 <td>{{ doc.filename if doc.filename else '直接輸入' }}</td>
                                 <td>{{ doc.uploaded_at.strftime('%Y-%m-%d') }}</td>
+                                <td>
+                                    {% if doc.embedding_json %}
+                                    <span class="badge bg-success">✅ 已學習</span>
+                                    {% elif doc.content %}
+                                    <span class="badge bg-warning text-dark">⏳ 等待中</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">❌ 無內容</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
                                         <button type="button" class="btn btn-outline-primary view-document"
@@ -57,7 +67,7 @@
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="4" class="text-center">知識庫中尚無文件</td>
+                                <td colspan="5" class="text-center">知識庫中尚無文件</td>
                             </tr>
                             {% endfor %}
                         </tbody>
