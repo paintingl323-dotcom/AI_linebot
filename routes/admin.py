@@ -413,74 +413,78 @@ def add_document():
     """Add a document to the knowledge base"""
     form = DocumentForm()
     
-    # We need to manually handle validation for multiple files if Flask-WTF doesn't fully support it
-    # But usually validate_on_submit() works for the CSRF token and other fields
-    if form.validate_on_submit():
-        # Check for multiple files
-        files = request.files.getlist(form.file.name)
-        
-        # If text content is provided, add it as a separate document
-        if form.content.data and form.title.data:
-            title = form.title.data
-            content = form.content.data
-            success, result = RAGService.add_document(title, content, None)
-            if success:
-                flash(f'Document "{title}" added successfully.', 'success')
-            else:
-                flash(f'Error adding document "{title}": {result}', 'danger')
-
-        # If files are provided
-        if files and files[0].filename:
-            documents_to_add = []
-            error_count = 0
+    try:
+        # We need to manually handle validation for multiple files if Flask-WTF doesn't fully support it
+        # But usually validate_on_submit() works for the CSRF token and other fields
+        if form.validate_on_submit():
+            # Check for multiple files
+            files = request.files.getlist(form.file.name)
             
-            for file in files:
-                if not file.filename: continue
-                
-                filename = secure_filename(file.filename)
-                
-                # Use filename as title if one isn't explicitly provided for the batch
-                doc_title = filename
-                
-                try:
-                    # Read file content
-                    file.stream.seek(0) # Ensure we read from start
-                    file_content = file.read().decode('utf-8', errors='replace')
-                    
-                    # Specialized handling for CSV files (LINE chat logs)
-                    if filename.lower().endswith('.csv'):
-                        try:
-                            file_content = parse_line_csv_content(file_content)
-                        except Exception as e:
-                            logger.error(f"Error parsing CSV {filename}: {e}")
-                            error_count += 1
-                            continue # Skip this file if parsing fails
-                    
-                    if file_content:
-                        documents_to_add.append({
-                            'title': doc_title,
-                            'content': file_content,
-                            'filename': filename
-                        })
-                except Exception as e:
-                    logger.error(f"Error processing file {filename}: {e}")
-                    error_count += 1
-
-            # Perform bulk add
-            if documents_to_add:
-                success, result = RAGService.bulk_add_documents(documents_to_add)
+            # If text content is provided, add it as a separate document
+            if form.content.data and form.title.data:
+                title = form.title.data
+                content = form.content.data
+                success, result = RAGService.add_document(title, content, None)
                 if success:
-                    flash(f'Successfully added {len(documents_to_add)} documents. (Background indexing may continue)', 'success')
+                    flash(f'Document "{title}" added successfully.', 'success')
                 else:
-                    flash(f'Error processing bulk upload: {result}', 'danger')
-            
-            if error_count > 0:
-                flash(f'Failed to process {error_count} files.', 'warning')
+                    flash(f'Error adding document "{title}": {result}', 'danger')
 
-    else:
-        for field, errors in form.errors.items():
-            for error in errors:
-                flash(f'{field}: {error}', 'danger')
+            # If files are provided
+            if files and files[0].filename:
+                documents_to_add = []
+                error_count = 0
+                
+                for file in files:
+                    if not file.filename: continue
+                    
+                    filename = secure_filename(file.filename)
+                    
+                    # Use filename as title if one isn't explicitly provided for the batch
+                    doc_title = filename
+                    
+                    try:
+                        # Read file content
+                        file.stream.seek(0) # Ensure we read from start
+                        file_content = file.read().decode('utf-8', errors='replace')
+                        
+                        # Specialized handling for CSV files (LINE chat logs)
+                        if filename.lower().endswith('.csv'):
+                            try:
+                                file_content = parse_line_csv_content(file_content)
+                            except Exception as e:
+                                logger.error(f"Error parsing CSV {filename}: {e}")
+                                error_count += 1
+                                continue # Skip this file if parsing fails
+                        
+                        if file_content:
+                            documents_to_add.append({
+                                'title': doc_title,
+                                'content': file_content,
+                                'filename': filename
+                            })
+                    except Exception as e:
+                        logger.error(f"Error processing file {filename}: {e}")
+                        error_count += 1
+
+                # Perform bulk add
+                if documents_to_add:
+                    success, result = RAGService.bulk_add_documents(documents_to_add)
+                    if success:
+                        flash(f'Successfully added {len(documents_to_add)} documents. (Background indexing may continue)', 'success')
+                    else:
+                        flash(f'Error processing bulk upload: {result}', 'danger')
+                
+                if error_count > 0:
+                    flash(f'Failed to process {error_count} files.', 'warning')
+
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f'{field}: {error}', 'danger')
+    except Exception as e:
+        logger.error(f"Unhandled error in add_document: {e}", exc_info=True)
+        flash(f'伺服器發生錯誤：{str(e)}', 'danger')
     
     return redirect(url_for('admin.knowledge_base'))
 
