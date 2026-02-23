@@ -49,6 +49,7 @@ models.BotStyle = type('BotStyle', (models.BotStyle, db.Model), {})
 models.Config = type('Config', (models.Config, db.Model), {})
 models.Document = type('Document', (models.Document, db.Model), {})
 models.LogEntry = type('LogEntry', (models.LogEntry, db.Model), {})
+models.Escalation = type('Escalation', (models.Escalation, db.Model), {})
 
 # Import for easy access
 User = models.User
@@ -58,6 +59,7 @@ BotStyle = models.BotStyle
 Config = models.Config
 Document = models.Document
 LogEntry = models.LogEntry
+Escalation = models.Escalation
 
 # Setup login manager
 @login_manager.user_loader
