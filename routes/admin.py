@@ -6,7 +6,7 @@ import io
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from models import BotStyle, Config, ChatMessage, Document, LineUser, User
-from forms import LLMSettingsForm, BotStyleForm, BotSettingsForm, DocumentForm, UserForm
+from forms import LLMSettingsForm, BotStyleForm, BotSettingsForm, DocumentForm, UserForm, EmailSettingsForm
 
 admin_bp = Blueprint('admin', __name__)
 
