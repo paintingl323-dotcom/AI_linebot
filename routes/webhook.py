@@ -205,10 +205,14 @@ def handle_text_message(event):
             response_text = "抱歉，目前無法處理您的請求。請稍後再試。"
         
         # Save bot response to database first
+        # Senior Backend: Strip tags before saving to message history for cleanliness
+        clean_db_response = re.sub(r'\[ESCALATE:.*?\]', '', response_text).strip()
+        clean_db_response = re.sub(r'\[IMAGE:.*?\]', '', clean_db_response).strip()
+        
         bot_message = ChatMessage(
             line_user_id=user_id,
             is_user_message=False,
-            message_text=response_text,
+            message_text=clean_db_response or response_text,
             bot_style=bot_style
         )
         db.session.add(bot_message)
@@ -220,16 +224,22 @@ def handle_text_message(event):
             logger.info(f"Sending response with reply token: {event.reply_token}")
             line_bot_api = get_line_bot_api()
             
+            # Senior Backend: Parse semantic escalation tags
+            escalate_pattern = r'\[ESCALATE:\s*(.*?)\]'
+            escalate_match = re.search(escalate_pattern, response_text)
+            ai_reason = escalate_match.group(1) if escalate_match else None
+            
+            # Clean text for sending to user (strip escalation tags)
+            clean_response = re.sub(escalate_pattern, '', response_text).strip()
+            if not clean_response:
+                clean_response = "這是一則系統提醒（AI 偵測到重要意圖並非直接回應內容）。" if ai_reason else "抱歉，我現在無法生成回應。"
+            
             # Parse response for multiple messages (text and images)
-            import re
             messages_to_send = []
             
-            if not response_text or not response_text.strip():
-                response_text = "抱歉，我現在無法生成回應。"
-            
-            # Find image tags: [IMAGE: http://url.to/image.jpg]
+            # Find image tags in the clean text
             image_pattern = r'\[IMAGE:\s*(https?://[^\s\]]+)\]'
-            image_matches = list(re.finditer(image_pattern, response_text))
+            image_matches = list(re.finditer(image_pattern, clean_response))
             
             if image_matches:
                 # Split text by image tags and create multiple message objects
@@ -237,7 +247,7 @@ def handle_text_message(event):
                 for match in image_matches:
                     start, end = match.span()
                     # Add preceding text if not empty
-                    text_part = response_text[last_end:start].strip()
+                    text_part = clean_response[last_end:start].strip()
                     if text_part:
                         messages_to_send.append(TextSendMessage(text=text_part))
                     
@@ -251,18 +261,18 @@ def handle_text_message(event):
                     last_end = end
                 
                 # Add remaining text if any
-                remaining_text = response_text[last_end:].strip()
+                remaining_text = clean_response[last_end:].strip()
                 if remaining_text:
                     messages_to_send.append(TextSendMessage(text=remaining_text))
             else:
-                # No images found, send original text
-                messages_to_send.append(TextSendMessage(text=response_text))
+                # No images found, send clean text
+                messages_to_send.append(TextSendMessage(text=clean_response))
             
             # Respect LINE's 5 message limit per reply
             messages_to_send = [m for m in messages_to_send if m][:5]
             
             if not messages_to_send:
-                messages_to_send = [TextSendMessage(text=response_text)]
+                messages_to_send = [TextSendMessage(text=clean_response)]
             
             line_bot_api.reply_message(
                 event.reply_token,
@@ -280,61 +290,81 @@ def handle_text_message(event):
         # Pre-fetch keywords to avoid database access in thread if possible
         keywords_str = ConfigManager.get("ESCALATION_KEYWORDS", "購買,下單,匯款,轉帳,價格,多少錢,現貨,怎麼買,沒收到,寄錯,瑕疵,退貨,換貨,不滿,客服,找人,真人,聯絡我,緊急")
         
-        def process_escalation_task(app_instance, u_id, u_disp_name, u_msg, r_text, target_keywords_str):
+        def process_escalation_task(app_instance, u_id, u_disp_name, u_msg, r_text, target_keywords_str, ai_semantic_reason):
             with app_instance.app_context():
                 try:
                     from services.email_service import EmailService
                     from models import Escalation
                     
-                    # 1. Check Keywords
-                    keywords = [k.strip() for k in target_keywords_str.replace("，", ",").split(",") if k.strip()]
-                    
-                    # More robust matching
-                    match = next((k for k in keywords if k.lower() in u_msg.lower()), None)
-                    if match:
-                        logger.info(f"[Escalation] Keyword triggered: {match}")
+                    # Check if already triggered by AI semantic tag
+                    triggered = False
+                    if ai_semantic_reason:
+                        logger.info(f"[Escalation] AI semantic trigger: {ai_semantic_reason}")
                         esc = Escalation(
                             line_user_id=u_id,
                             user_display_name=u_disp_name,
                             message_text=u_msg,
-                            reason=f"關鍵字觸發 ({match})"
+                            reason=f"AI 意圖偵測 ({ai_semantic_reason})"
                         )
                         db.session.add(esc)
                         db.session.commit()
+                        triggered = True
                         
                         try:
-                            EmailService.notify_escalation(u_id, u_msg, f"關鍵字觸發 ({match})")
-                        except Exception as e:
-                            logger.error(f"[Escalation] Email error: {e}")
-                    
-                    # 2. Check AI Content
-                    human_phrases = ["真人接手", "聯繫客服", "無法處理", "需要人為幫助"]
-                    ai_trigger = next((p for p in human_phrases if p in r_text), None)
-                    if ai_trigger:
-                        logger.info(f"[Escalation] AI content triggered: {ai_trigger}")
-                        esc = Escalation(
-                            line_user_id=u_id,
-                            user_display_name=u_disp_name,
-                            message_text=u_msg,
-                            reason=f"AI 建議真人接手 ({ai_trigger})"
-                        )
-                        db.session.add(esc)
-                        db.session.commit()
-                        
-                        try:
-                            EmailService.notify_escalation(u_id, u_msg, f"AI 建議真人接手 ({ai_trigger})")
+                            EmailService.notify_escalation(u_id, u_msg, f"AI 意圖偵測 ({ai_semantic_reason})")
                         except Exception as e:
                             logger.error(f"[Escalation] AI Email error: {e}")
+
+                    # 1. Keyword check (only if not already triggered by AI)
+                    if not triggered:
+                        keywords = [k.strip() for k in target_keywords_str.replace("，", ",").split(",") if k.strip()]
+                        match = next((k for k in keywords if k.lower() in u_msg.lower()), None)
+                        if match:
+                            logger.info(f"[Escalation] Keyword matched: {match}")
+                            esc = Escalation(
+                                line_user_id=u_id,
+                                user_display_name=u_disp_name,
+                                message_text=u_msg,
+                                reason=f"關鍵字觸發 ({match})"
+                            )
+                            db.session.add(esc)
+                            db.session.commit()
+                            triggered = True
+                            
+                            try:
+                                EmailService.notify_escalation(u_id, u_msg, f"關鍵字觸發 ({match})")
+                            except Exception as e:
+                                logger.error(f"[Escalation] Keyword email error: {e}")
+                    
+                    # 2. AI phrasing check (legacy fallback)
+                    if not triggered:
+                        human_phrases = ["真人接手", "聯繫客服", "無法處理", "需要人為幫助"]
+                        ai_phrase = next((p for p in human_phrases if p in r_text), None)
+                        if ai_phrase:
+                            logger.info(f"[Escalation] AI phrase matched: {ai_phrase}")
+                            esc = Escalation(
+                                line_user_id=u_id,
+                                user_display_name=u_disp_name,
+                                message_text=u_msg,
+                                reason=f"AI 建議真人接手 ({ai_phrase})"
+                            )
+                            db.session.add(esc)
+                            db.session.commit()
+                            
+                            try:
+                                EmailService.notify_escalation(u_id, u_msg, f"AI 建議真人接手 ({ai_phrase})")
+                            except Exception as e:
+                                logger.error(f"[Escalation] AI phrase email error: {e}")
                             
                 except Exception as ex:
                     logger.error(f"[Escalation] Thread execution failed: {ex}", exc_info=True)
                 finally:
-                    db.session.remove() # Clean up session in thread
+                    db.session.remove()
 
         import threading
         threading.Thread(
             target=process_escalation_task, 
-            args=(app_obj, user_id, u_display_name, user_message, response_text, keywords_str), 
+            args=(app_obj, user_id, u_display_name, user_message, response_text, keywords_str, ai_reason), 
             daemon=True
         ).start()
         # -------------------------------------------------------------------------
