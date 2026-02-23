@@ -224,6 +224,9 @@ def handle_text_message(event):
             import re
             messages_to_send = []
             
+            if not response_text or not response_text.strip():
+                response_text = "抱歉，我現在無法生成回應。"
+            
             # Find image tags: [IMAGE: http://url.to/image.jpg]
             image_pattern = r'\[IMAGE:\s*(https?://[^\s\]]+)\]'
             image_matches = list(re.finditer(image_pattern, response_text))
@@ -239,11 +242,12 @@ def handle_text_message(event):
                         messages_to_send.append(TextSendMessage(text=text_part))
                     
                     # Add the image
-                    image_url = match.group(1)
-                    messages_to_send.append(ImageSendMessage(
-                        original_content_url=image_url,
-                        preview_image_url=image_url
-                    ))
+                    image_url = match.group(1).strip()
+                    if image_url:
+                        messages_to_send.append(ImageSendMessage(
+                            original_content_url=image_url,
+                            preview_image_url=image_url
+                        ))
                     last_end = end
                 
                 # Add remaining text if any
@@ -255,7 +259,10 @@ def handle_text_message(event):
                 messages_to_send.append(TextSendMessage(text=response_text))
             
             # Respect LINE's 5 message limit per reply
-            messages_to_send = messages_to_send[:5]
+            messages_to_send = [m for m in messages_to_send if m][:5]
+            
+            if not messages_to_send:
+                messages_to_send = [TextSendMessage(text=response_text)]
             
             line_bot_api.reply_message(
                 event.reply_token,
@@ -265,73 +272,72 @@ def handle_text_message(event):
         except Exception as e:
             logger.error(f"Error sending LINE response: {e}", exc_info=True)
 
-        # --- HUMAN ESCALATION LOGIC (Asynchronous to avoid blocking LINE reply) ---
-        def process_escalation_async(u_id, u_msg, r_text, l_user_profile):
+        # --- HUMAN ESCALATION LOGIC (Asynchronous but safe) ---
+        # Pass only strings to avoid DetachedInstanceError in background thread
+        u_display_name = line_user.display_name or "未知用戶"
+        
+        def process_escalation_async(u_id, u_disp_name, u_msg, r_text):
             with current_app.app_context():
                 try:
                     from services.email_service import EmailService
                     from models import Escalation
                     
-                    logger.info(f"[Escalation Check] Starting for user {u_id}. Message: {u_msg}")
+                    logger.info(f"[Escalation Check] Starting for user {u_id} ({u_disp_name})")
                     
                     # 1. Check Keywords
                     trigger_keywords = ConfigManager.get("ESCALATION_KEYWORDS", "購買,下單,匯款,轉帳,價格,多少錢,現貨,怎麼買,沒收到,寄錯,瑕疵,退貨,換貨,不滿,客服,找人,真人,聯絡我,緊急")
-                    logger.info(f"[Escalation Check] Trigger keywords from config: {trigger_keywords}")
-                    
                     keywords = [k.strip() for k in trigger_keywords.replace("，", ",").split(",") if k.strip()]
                     
-                    match = next((k for k in keywords if k in u_msg), None)
+                    match = next((k for k in keywords if k.lower() in u_msg.lower()), None)
                     if match:
-                        logger.info(f"[Escalation Check] Match found: {match}")
+                        logger.info(f"[Escalation Check] Keyword match found: {match}")
                         new_esc = Escalation(
                             line_user_id=u_id,
-                            user_display_name=l_user_profile.display_name,
+                            user_display_name=u_disp_name,
                             message_text=u_msg,
                             reason=f"關鍵字觸發 ({match})"
                         )
                         db.session.add(new_esc)
                         db.session.commit()
-                        logger.info(f"[Escalation Check] Saved to DB. ID: {new_esc.id}")
                         
                         try:
                             EmailService.notify_escalation(u_id, u_msg, f"關鍵字觸發 ({match})")
-                            logger.info("[Escalation Check] Email notification sent")
                         except Exception as email_err:
-                            logger.error(f"[Escalation Check] Email notification failed: {email_err}")
-                    else:
-                        logger.info("[Escalation Check] No keyword match found")
+                            logger.error(f"[Escalation Check] Email failed: {email_err}")
                     
                     # 2. Check AI Content
                     human_phrases = ["真人接手", "聯繫客服", "無法處理", "需要人為幫助"]
-                    if any(p in r_text for p in human_phrases):
-                        logger.info("[Escalation Check] AI content trigger detected")
+                    ai_trigger = next((p for p in human_phrases if p in r_text), None)
+                    if ai_trigger:
+                        logger.info(f"[Escalation Check] AI content trigger: {ai_trigger}")
                         new_esc = Escalation(
                             line_user_id=u_id,
-                            user_display_name=l_user_profile.display_name,
+                            user_display_name=u_disp_name,
                             message_text=u_msg,
-                            reason="AI 建議真人接手"
+                            reason=f"AI 建議真人接手 ({ai_trigger})"
                         )
                         db.session.add(new_esc)
                         db.session.commit()
-                        logger.info(f"[Escalation Check] Saved to DB (AI Trigger). ID: {new_esc.id}")
                         
                         try:
-                            EmailService.notify_escalation(u_id, u_msg, "AI 建議真人接手")
-                            logger.info("[Escalation Check] Email notification sent (AI Trigger)")
+                            EmailService.notify_escalation(u_id, u_msg, f"AI 建議真人接手 ({ai_trigger})")
                         except Exception as email_err:
-                            logger.error(f"[Escalation Check] Email notification failed (AI Trigger): {email_err}")
+                            logger.error(f"[Escalation Check] AI Trigger email failed: {email_err}")
                 except Exception as ex:
-                    logger.error(f"[Escalation Check] CRITICAL ERROR: {ex}", exc_info=True)
+                    logger.error(f"[Escalation Check] ERROR: {ex}", exc_info=True)
 
         import threading
-        # Ensure thread has necessary objects
-        t = threading.Thread(target=process_escalation_async, args=(user_id, user_message, response_text, line_user), daemon=True)
-        t.start()
+        threading.Thread(
+            target=process_escalation_async, 
+            args=(user_id, u_display_name, user_message, response_text), 
+            daemon=True
+        ).start()
         # -------------------------------------------------------------------------
 
 
     
     except Exception as e:
+        db.session.rollback()
         logger.error(f"Unhandled exception in handle_text_message: {e}", exc_info=True)
 
 # Webhook verification endpoint
