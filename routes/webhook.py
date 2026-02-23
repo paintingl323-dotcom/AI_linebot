@@ -172,15 +172,21 @@ def handle_text_message(event):
         channel_secret = ConfigManager.get("LINE_CHANNEL_SECRET", "not_set")
         logger.info(f"LINE credentials - Access token length: {len(access_token)}, Channel secret length: {len(channel_secret)}")
         
-        # Get RAG context if enabled
+        # Get RAG context if enabled (with Short Circuit for speed)
         rag_context = None
         try:
             rag_enabled = ConfigManager.get("RAG_ENABLED", "False")
-            logger.info(f"RAG enabled: {rag_enabled}")
-            if rag_enabled.lower() == "true":
+            
+            # Senior Backend: Short circuit for extremely simple queries to save time
+            simple_queries = ["ok", "好的", "謝謝", "不用", "你好", "哈囉", "hi", "hello", "thanks", "thank you"]
+            is_simple = user_message.strip().lower() in simple_queries or len(user_message.strip()) <= 1
+            
+            if rag_enabled.lower() == "true" and not is_simple:
                 logger.info("Getting RAG context for query")
                 rag_context = RAGService.get_context_for_query(user_message)
                 logger.info(f"RAG context retrieved, length: {len(rag_context) if rag_context else 0}")
+            elif is_simple:
+                logger.info("Simple query detected, skipping RAG retrieval for speed.")
         except Exception as e:
             logger.error(f"Error retrieving RAG context: {e}")
         

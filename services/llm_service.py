@@ -88,52 +88,34 @@ class LLMService:
 如果用戶詢問當前日期或時間,請使用以上信息回答。
 """
 
-        # Privacy and Personalization Prompt
-        privacy_prompt = """
-【重要規則 - 隱私與品牌保護】
-1. 你的名字是 "ZZZ LAZY AI助手" (或根據風格設定)。
-2. 絕對禁止提及 "艾可公司" (Aiko Company) 或任何與 ZZZ LAZY 無關的公司名稱。
-3. 絕對禁止提及任何其他客戶、會員或第三方的名字。你只能回答當前對話用戶的問題。
-4. 如果知識庫中包含具體的客戶案例或姓名，請將其泛化處理（例如將 "陳先生" 改為 "一位客戶"），絕不能透露真實姓名。
-5. **【新功能 - 傳送圖片】**：如果你需要傳送圖片（如銀行帳號資訊、QR Code 或分期付款圖表），請在回覆中使用格式：`[IMAGE: 圖片網址]`。
-   - 例如：`這是我們的撥款帳號信息：[IMAGE: https://example.com/bank_info.jpg]`
-   - 請確保網址是完整且有效的 HTTPS 連結。
-6. **【重要：真人接手觸發】**：如果你判斷用戶有「購買意圖、付款問題、抱怨、或明確需要尋求真人幫助」的需求，請在回覆的最開頭加入 `[ESCALATE: 描述原因]`。
-   - 例如：`[ESCALATE: 用戶詢問分期付款流程] 哈囉！關於分期的部分，我先提供資訊給您，並已同步幫您轉發給專人處理...`
-   - 這能確保管理員在後台看板第一時間看到該訊息。
+        # Consolidate and Streamline Prompt for Speed
+        system_prompt = f"""{style.prompt}
+【核心規則】
+1. 你是 "ZZZ LAZY AI助手"。禁止提及 "艾可公司" 或無關品牌。
+2. 僅回答當前用戶問題，嚴禁洩露其他用戶個資。
+3. 知識庫案例需泛化處理（如：一位客戶）。
+4. **傳送圖片**：使用 `[IMAGE: 網址]`。
+5. **真人接手**：偵測到「購買、付款、客訴、尋求真人」意圖時，回覆開頭必須包含 `[ESCALATE: 原因]`。
+{date_prompt}
+{personalization_prompt}
 """
         
-        personalization_prompt = ""
-        if user_name:
-            personalization_prompt = f"當前對話的用戶名字是: {user_name}。請在適當的時候（例如問候或鼓勵時）親切地稱呼對方。"
-        
-        # Build the full system prompt
-        system_prompt = f"{style.prompt}\n\n{date_prompt}\n\n{privacy_prompt}\n\n{personalization_prompt}"
-        
-        # Add RAG context if available
+        # Add RAG context if available - Cleaned up to save tokens
         if rag_context:
-            system_prompt += f"""
-
-【重要 - 知識庫參考資料】
-以下是從知識庫中檢索到的相關資料，你**必須優先參考**這些內容來回答用戶的問題。
-請根據這些資料提供具體、有內容的回答，不要只給空泛的回覆。
-如果資料中包含可以回答用戶問題的訊息，請直接引用並整理成有用的回答。
-
-{rag_context}
-
-【注意】請基於以上知識庫資料回答，提供具體的產品資訊和功能說明。"""
+            system_prompt += f"\n【參考資料】\n{rag_context}\n請優先根據上方資料回答，保持簡潔專業。"
         
         # Build the full prompt for Gemini
         full_prompt = f"{system_prompt}\n\n用戶: {user_message}\n\n助手:"
         
         try:
-            # Use gemini-2.0-flash-lite-001 for better quota availability
+            # Use gemini-2.0-flash-lite-001 for low latency
             model = genai.GenerativeModel('gemini-2.0-flash-lite-001')
             
-            # Configure generation settings
+            # Optimized for speed
             generation_config = {
                 'temperature': settings.get("temperature", 0.7),
-                'max_output_tokens': settings.get("max_tokens", 1000),
+                'max_output_tokens': settings.get("max_tokens", 800), # Slightly lower for faster finish
+                'top_p': 0.95,
             }
             
             response = model.generate_content(
@@ -144,7 +126,7 @@ class LLMService:
             return response.text
         except Exception as e:
             logger.error(f"Error generating response: {e}")
-            return f"抱歉,生成回應時發生錯誤:{str(e)}"
+            return f"抱歉，處理發生延遲，請稍後再試。"
     
     @staticmethod
     def validate_api_key(api_key):
