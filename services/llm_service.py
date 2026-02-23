@@ -65,8 +65,9 @@ class LLMService:
         # Get LLM settings
         settings = get_llm_settings()
         
-        # Get current date information
-        current_date = datetime.datetime.now()
+        # Get current date information (Taiwan time UTC+8)
+        taiwan_tz = datetime.timezone(datetime.timedelta(hours=8))
+        current_date = datetime.datetime.now(tz=taiwan_tz)
         date_info = {
             "year": current_date.year,
             "month": current_date.month,
