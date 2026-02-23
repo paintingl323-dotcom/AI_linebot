@@ -5,7 +5,7 @@ from flask import Blueprint, request, abort, current_app
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import (
-    MessageEvent, TextMessage, TextSendMessage,
+    MessageEvent, TextMessage, TextSendMessage, ImageSendMessage,
 )
 from app import db
 from models import LineUser, ChatMessage
@@ -219,11 +219,49 @@ def handle_text_message(event):
         try:
             logger.info(f"Sending response with reply token: {event.reply_token}")
             line_bot_api = get_line_bot_api()
+            
+            # Parse response for multiple messages (text and images)
+            import re
+            messages_to_send = []
+            
+            # Find image tags: [IMAGE: http://url.to/image.jpg]
+            image_pattern = r'\[IMAGE:\s*(https?://[^\s\]]+)\]'
+            image_matches = list(re.finditer(image_pattern, response_text))
+            
+            if image_matches:
+                # Split text by image tags and create multiple message objects
+                last_end = 0
+                for match in image_matches:
+                    start, end = match.span()
+                    # Add preceding text if not empty
+                    text_part = response_text[last_end:start].strip()
+                    if text_part:
+                        messages_to_send.append(TextSendMessage(text=text_part))
+                    
+                    # Add the image
+                    image_url = match.group(1)
+                    messages_to_send.append(ImageSendMessage(
+                        original_content_url=image_url,
+                        preview_image_url=image_url
+                    ))
+                    last_end = end
+                
+                # Add remaining text if any
+                remaining_text = response_text[last_end:].strip()
+                if remaining_text:
+                    messages_to_send.append(TextSendMessage(text=remaining_text))
+            else:
+                # No images found, send original text
+                messages_to_send.append(TextSendMessage(text=response_text))
+            
+            # Respect LINE's 5 message limit per reply
+            messages_to_send = messages_to_send[:5]
+            
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text=response_text)
+                messages_to_send
             )
-            logger.info("Response sent successfully")
+            logger.info(f"Multi-message response sent successfully ({len(messages_to_send)} bubbles)")
         except Exception as e:
             logger.error(f"Error sending LINE response: {e}", exc_info=True)
 
