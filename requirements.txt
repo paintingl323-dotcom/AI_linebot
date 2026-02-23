@@ -10,5 +10,4 @@ sqlalchemy
 werkzeug
 wtforms
 email-validator
-faiss-cpu
 psycopg2-binary

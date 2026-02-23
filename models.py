@@ -87,6 +87,7 @@ class Document:
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = Column(Boolean, default=True)
+    embedding_json = Column(Text, nullable=True)  # JSON-serialized embedding vector stored in DB
     
     def __repr__(self):
         return f'<Document {self.title}>'
