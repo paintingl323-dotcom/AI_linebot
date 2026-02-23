@@ -48,9 +48,22 @@
                             href="{{ url_for('admin.notification_settings') }}">通知設定</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'admin.escalation_list' %}active{% endif %}"
+                            href="{{ url_for('admin.escalation_list') }}">
+                            關鍵訊息
+                            {% if pending_escalations_count > 0 %}
+                            <span class="badge bg-danger rounded-circle p-1"
+                                style="width: 1.5rem; height: 1.5rem; line-height: 1rem; font-size: 0.7rem;">
+                                {{ pending_escalations_count }}
+                            </span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'admin.knowledge_base' %}active{% endif %}"
                             href="{{ url_for('admin.knowledge_base') }}">知識庫</a>
                     </li>
+
                 </ul>
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">

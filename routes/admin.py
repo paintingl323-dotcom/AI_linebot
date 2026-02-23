@@ -5,7 +5,7 @@ import csv
 import io
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from models import BotStyle, Config, ChatMessage, Document, LineUser, User
+from models import BotStyle, Config, ChatMessage, Document, LineUser, User, Escalation
 from forms import LLMSettingsForm, BotStyleForm, BotSettingsForm, DocumentForm, UserForm, EmailSettingsForm
 
 admin_bp = Blueprint('admin', __name__)
@@ -16,6 +16,19 @@ from services.llm_service import LLMService
 from rag_service import RAGService
 
 logger = logging.getLogger(__name__)
+
+# Context processor to make pending escalation count available globally in admin templates
+@admin_bp.app_context_processor
+def inject_pending_count():
+    if not current_user.is_authenticated:
+        return {'pending_escalations_count': 0}
+    try:
+        from models import Escalation
+        count = Escalation.query.filter_by(is_resolved=False).count()
+        return {'pending_escalations_count': count}
+    except Exception:
+        return {'pending_escalations_count': 0}
+
 
 # Admin access decorator
 def admin_required(f):
@@ -764,3 +777,62 @@ def get_user(user_id):
         'email': user.email,
         'is_admin': user.is_admin
     })
+@admin_bp.route('/escalations')
+@admin_required
+def escalation_list():
+    """List of human escalation requests (critical messages)"""
+    try:
+        # Get pending and resolved escalations
+        pending = Escalation.query.filter_by(is_resolved=False).order_by(Escalation.created_at.desc()).all()
+        resolved = Escalation.query.filter_by(is_resolved=True).order_by(Escalation.created_at.desc()).limit(50).all()
+        
+        return render_template('escalation_list.html', pending=pending, resolved=resolved)
+    except Exception as e:
+        logger.error(f"Error in escalation_list: {e}")
+        flash(f"讀取關鍵訊息失敗: {e}", "danger")
+        return redirect(url_for('admin.dashboard'))
+
+@admin_bp.route('/escalations/resolve/<int:id>', methods=['POST'])
+@admin_required
+def resolve_escalation(id):
+    """Mark an escalation as resolved"""
+    try:
+        esc = Escalation.query.get_or_404(id)
+        esc.is_resolved = True
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Error resolving escalation {id}: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@admin_bp.route('/escalations/delete', methods=['POST'])
+@admin_required
+def delete_escalations():
+    """Delete selected escalations (bulk action)"""
+    try:
+        ids = request.json.get('ids', [])
+        if not ids:
+            return jsonify({"success": False, "message": "未選擇項目"}), 400
+            
+        Escalation.query.filter(Escalation.id.in_(ids)).delete(synchronize_session=False)
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Error deleting escalations: {e}")
+        db.session.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@admin_bp.route('/escalations/resolve_all', methods=['POST'])
+@admin_required
+def resolve_all_escalations():
+    """Mark all pending escalations as resolved"""
+    try:
+        Escalation.query.filter_by(is_resolved=False).update({"is_resolved": True})
+        db.session.commit()
+        flash("所有訊息已標記為已處理。", "success")
+        return redirect(url_for('admin.escalation_list'))
+    except Exception as e:
+        logger.error(f"Error resolving all escalations: {e}")
+        db.session.rollback()
+        flash(f"批次處理失敗: {e}", "danger")
+        return redirect(url_for('admin.escalation_list'))

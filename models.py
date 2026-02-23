@@ -104,3 +104,18 @@ class LogEntry:
     
     def __repr__(self):
         return f'<LogEntry {self.id}>'
+
+class Escalation:
+    """Model to store human escalation requests (internal notifications)"""
+    __tablename__ = 'escalation'
+    
+    id = Column(Integer, primary_key=True)
+    line_user_id = Column(String(64), nullable=False)
+    user_display_name = Column(String(64), nullable=True)
+    message_text = Column(Text, nullable=False)
+    reason = Column(String(128), nullable=False)
+    is_resolved = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<Escalation {self.id} from {self.line_user_id}>'

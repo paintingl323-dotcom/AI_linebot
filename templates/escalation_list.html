@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+
+{% block title %}關鍵回報訊息{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-5 border-bottom pb-3"
+    style="border-color: #000 !important;">
+    <h1 class="mb-0 border-0 pb-0">關鍵訊息看板</h1>
+    <div class="text-end">
+        <small class="d-block text-uppercase" style="letter-spacing: 0.1em;">Human-in-the-loop</small>
+        <span class="badge bg-danger rounded-0 px-3 py-2">需要真人接手</span>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card border-dark rounded-0">
+            <div
+                class="card-header bg-dark text-white rounded-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 small text-uppercase fw-bold">待處理清單 ({{ pending|length }})</h5>
+                {% if pending %}
+                <form action="{{ url_for('admin.resolve_all_escalations') }}" method="POST" class="m-0">
+                    <button type="submit" class="btn btn-outline-light btn-sm rounded-0 px-3">全部標記為已處理</button>
+                </form>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="bg-light text-uppercase small fw-bold">
+                            <tr>
+                                <th style="width: 50px;" class="ps-4"><input type="checkbox" id="selectAll"
+                                        class="form-check-input border-dark"></th>
+                                <th style="width: 150px;">狀態 / 分類</th>
+                                <th style="width: 150px;">用戶</th>
+                                <th>關鍵對話內容</th>
+                                <th style="width: 180px;">時間</th>
+                                <th style="width: 150px;" class="text-end pe-4">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="escalationTableBody">
+                            {% if not pending %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5 text-muted">
+                                    <i class="fas fa-check-circle fa-3x mb-3 d-block opacity-25"></i>
+                                    目前沒有待處理的關鍵訊息。
+                                </td>
+                            </tr>
+                            {% else %}
+                            {% for esc in pending %}
+                            <tr id="esc-row-{{ esc.id }}">
+                                <td class="ps-4"><input type="checkbox"
+                                        class="esc-checkbox form-check-input border-dark" data-id="{{ esc.id }}"></td>
+                                <td>
+                                    <span class="badge bg-dark rounded-0 small fw-normal">{{ esc.reason }}</span>
+                                </td>
+                                <td>
+                                    <div class="fw-bold">{{ esc.user_display_name or '未知用戶' }}</div>
+                                    <small class="text-muted">{{ esc.line_user_id[:8] }}...</small>
+                                </td>
+                                <td class="text-break py-3">
+                                    <div class="p-2 border-start border-4 border-dark bg-light fst-italic">
+                                        "{{ esc.message_text }}"
+                                    </div>
+                                </td>
+                                <td class="small text-muted">
+                                    {{ esc.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                </td>
+                                <td class="text-end pe-4">
+                                    <div class="btn-group">
+                                        <button onclick="resolveEscalation({{ esc.id }})"
+                                            class="btn btn-outline-dark btn-sm rounded-0" title="標記為已處理">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% if pending %}
+            <div class="card-footer bg-white border-top border-dark py-3 ps-4">
+                <button id="deleteSelectedBtn" class="btn btn-danger btn-sm rounded-0 px-4" disabled>
+                    <i class="fas fa-trash-alt me-2"></i> 刪除選取項目
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if resolved %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card border-dark rounded-0 opacity-75">
+            <div class="card-header bg-secondary text-white rounded-0 py-2">
+                <h6 class="mb-0 small text-uppercase">最近已處理 (前 50 筆)</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 align-middle">
+                        <tbody class="small">
+                            {% for esc in resolved %}
+                            <tr>
+                                <td style="width: 50px;" class="ps-4 text-center text-success"><i
+                                        class="fas fa-check"></i></td>
+                                <td style="width: 150px;"><span class="text-muted">{{ esc.reason }}</span></td>
+                                <td style="width: 150px;">{{ esc.user_display_name }}</td>
+                                <td class="text-muted">"{{ esc.message_text|truncate(50) }}"</td>
+                                <td style="width: 180px;" class="text-muted text-end pe-4">{{
+                                    esc.created_at.strftime('%m-%d %H:%M') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.esc-checkbox');
+    const deleteBtn = document.getElementById('deleteSelectedBtn');
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            checkboxes.forEach(cb => cb.checked = this.checked);
+            updateDeleteButton();
+        });
+    }
+
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateDeleteButton);
+    });
+
+    function updateDeleteButton() {
+        const checkedCount = document.querySelectorAll('.esc-checkbox:checked').length;
+        if (deleteBtn) {
+            deleteBtn.disabled = checkedCount === 0;
+            deleteBtn.innerHTML = `<i class="fas fa-trash-alt me-2"></i> 刪除選取項目 (${checkedCount})`;
+        }
+    }
+
+    function resolveEscalation(id) {
+        if (!confirm('確認將此訊息標記為已處理？')) return;
+
+        fetch(`/admin/escalations/resolve/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const row = document.getElementById(`esc-row-${id}`);
+                    row.style.transition = 'all 0.5s ease-on-out';
+                    row.style.opacity = '0';
+                    row.style.transform = 'translateX(20px)';
+                    setTimeout(() => {
+                        location.reload(); // Reload to update both lists and counts
+                    }, 500);
+                } else {
+                    alert('處理失敗: ' + (data.message || '未知錯誤'));
+                }
+            });
+    }
+
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', function () {
+            const selectedIds = Array.from(document.querySelectorAll('.esc-checkbox:checked')).map(cb => parseInt(cb.dataset.id));
+            if (selectedIds.length === 0) return;
+
+            if (!confirm(`確認要刪除選取的 ${selectedIds.length} 個項目？`)) return;
+
+            fetch('/admin/escalations/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: selectedIds })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('刪除失敗: ' + (data.message || '未知錯誤'));
+                    }
+                });
+        });
+    }
+</script>
+{% endblock %}
