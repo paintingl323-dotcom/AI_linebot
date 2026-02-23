@@ -191,8 +191,39 @@ class RAGService:
             return False, str(e)
 
     # ------------------------------------------------------------------ #
+    #  Delete document                                                     #
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def delete_document(doc_id):
+        """Delete a document by ID.
+        
+        Returns (True, message) or (False, error_message).
+        """
+        from app import db
+        from models import Document
+
+        try:
+            doc = db.session.get(Document, doc_id)
+            if not doc:
+                return False, f"Document with id {doc_id} not found."
+            title = doc.title
+            db.session.delete(doc)
+            db.session.commit()
+            logger.info(f"Deleted document '{title}' (id={doc_id})")
+            return True, f"Document '{title}' deleted successfully."
+        except Exception as e:
+            logger.error(f"Error deleting document {doc_id}: {e}", exc_info=True)
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+            return False, str(e)
+
+    # ------------------------------------------------------------------ #
     #  Similarity search (no FAISS, pure numpy)                            #
     # ------------------------------------------------------------------ #
+
 
     @staticmethod
     def _cosine_similarity(vec_a, vec_b):

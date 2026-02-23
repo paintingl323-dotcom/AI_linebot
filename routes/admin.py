@@ -313,7 +313,12 @@ def message_history():
 @admin_required
 def knowledge_base():
     """Knowledge base management page"""
-    documents = Document.query.order_by(Document.uploaded_at.desc()).all()
+    try:
+        documents = Document.query.order_by(Document.uploaded_at.desc()).all()
+    except Exception as e:
+        logger.error(f"Error loading knowledge base: {e}", exc_info=True)
+        documents = []
+        flash(f'知識庫載入錯誤：{str(e)}', 'danger')
     form = DocumentForm()
     return render_template('knowledge_base.html', documents=documents, form=form)
 
