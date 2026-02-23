@@ -120,7 +120,7 @@ class RAGService:
             from models import Document
             for doc_id in doc_ids:
                 try:
-                    doc = Document.query.get(doc_id)
+                    doc = db.session.get(Document, doc_id)
                     if doc and not doc.embedding_json:
                         embedding = RAGService.get_embedding(doc.content)
                         if embedding:
@@ -283,7 +283,7 @@ class RAGService:
         try:
             docs_missing = Document.query.filter(
                 Document.is_active == True,
-                Document.embedding_json == None,   # noqa: E711
+                Document.embedding_json.is_(None),
             ).all()
 
             if not docs_missing:

@@ -88,6 +88,28 @@ def index():
 try:
     with app.app_context():
         db.create_all()
+        
+        # Migrate: add embedding_json column if it doesn't exist (for PostgreSQL)
+        # SQLAlchemy create_all() does NOT alter existing tables, so we do it manually
+        try:
+            from sqlalchemy import text
+            with db.engine.connect() as conn:
+                conn.execute(text(
+                    "ALTER TABLE document ADD COLUMN IF NOT EXISTS embedding_json TEXT"
+                ))
+                conn.commit()
+            logger.info("Migration: embedding_json column ensured in document table")
+        except Exception as col_err:
+            # SQLite doesn't support IF NOT EXISTS – try without it
+            try:
+                from sqlalchemy import text as text2
+                with db.engine.connect() as conn:
+                    conn.execute(text2("ALTER TABLE document ADD COLUMN embedding_json TEXT"))
+                    conn.commit()
+                logger.info("Migration: embedding_json column added (SQLite)")
+            except Exception:
+                pass  # Column may already exist
+
         if not User.query.first():
             from werkzeug.security import generate_password_hash
             admin = User(
@@ -112,14 +134,26 @@ try:
                 Config(key="LINE_CHANNEL_SECRET", value=""),
                 Config(key="LINE_CHANNEL_ACCESS_TOKEN", value=""),
                 Config(key="ACTIVE_BOT_STYLE", value="貼心"),
-                Config(key="RAG_ENABLED", value="False"),
+                Config(key="RAG_ENABLED", value="True"),
             ]
             for config in default_configs:
                 db.session.add(config)
             db.session.commit()
             logger.info("Created initial admin user and default settings")
+        else:
+            # Ensure RAG_ENABLED exists and is True (for existing deployments)
+            rag_config = Config.query.filter_by(key="RAG_ENABLED").first()
+            if not rag_config:
+                db.session.add(Config(key="RAG_ENABLED", value="True"))
+                db.session.commit()
+                logger.info("Migration: set RAG_ENABLED=True in config")
+            elif rag_config.value == "False":
+                rag_config.value = "True"
+                db.session.commit()
+                logger.info("Migration: updated RAG_ENABLED from False to True")
 except Exception as e:
     logger.error(f"Error during startup initialization: {e}")
+
 
 # Create knowledge_base directory if it doesn't exist
 try:
