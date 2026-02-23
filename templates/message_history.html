@@ -30,7 +30,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for message in messages %}
+                            {% for message in messages.items %}
                             <tr>
                                 <td>{{ message.line_user_id[:8] }}...</td>
                                 <td>
@@ -46,12 +46,12 @@
                                 <td>{{ message.bot_style or '-' }}</td>
                                 <td>{{ message.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
                                 <td>
-                                    <button type="button" class="btn btn-sm btn-outline-info view-message-btn" 
-                                            data-bs-toggle="modal" data-bs-target="#viewMessageModal"
-                                            data-message="{{ message.message_text }}"
-                                            data-user-id="{{ message.line_user_id }}"
-                                            data-type="{% if message.is_user_message %}用戶{% else %}機器人{% endif %}"
-                                            data-timestamp="{{ message.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}">
+                                    <button type="button" class="btn btn-sm btn-outline-info view-message-btn"
+                                        data-bs-toggle="modal" data-bs-target="#viewMessageModal"
+                                        data-message="{{ message.message_text }}"
+                                        data-user-id="{{ message.line_user_id }}"
+                                        data-type="{% if message.is_user_message %}用戶{% else %}機器人{% endif %}"
+                                        data-timestamp="{{ message.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}">
                                         查看
                                     </button>
                                 </td>
@@ -65,6 +65,43 @@
                     </table>
                 </div>
             </div>
+            <!-- Pagination -->
+            {% if messages.pages > 1 %}
+            <div class="card-footer bg-white py-3">
+                <nav aria-label="Page navigation">
+                    <ul class="pagination pagination-sm justify-content-center mb-0">
+                        <li class="page-item {% if not messages.has_prev %}disabled{% endif %}">
+                            <a class="page-link"
+                                href="{{ url_for('admin.message_history', page=messages.prev_num, user_id=current_user_id) if messages.has_prev else '#' }}"
+                                aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+
+                        {% for page_num in messages.iter_pages(left_edge=1, right_edge=1, left_current=2,
+                        right_current=2) %}
+                        {% if page_num %}
+                        <li class="page-item {% if page_num == messages.page %}active{% endif %}">
+                            <a class="page-link"
+                                href="{{ url_for('admin.message_history', page=page_num, user_id=current_user_id) }}">{{
+                                page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                        {% endfor %}
+
+                        <li class="page-item {% if not messages.has_next %}disabled{% endif %}">
+                            <a class="page-link"
+                                href="{{ url_for('admin.message_history', page=messages.next_num, user_id=current_user_id) if messages.has_next else '#' }}"
+                                aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -102,31 +139,31 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle message view modal
-    const viewMessageModal = document.getElementById('viewMessageModal');
-    if (viewMessageModal) {
-        viewMessageModal.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            const message = button.getAttribute('data-message');
-            const userId = button.getAttribute('data-user-id');
-            const type = button.getAttribute('data-type');
-            const timestamp = button.getAttribute('data-timestamp');
-            
-            document.getElementById('modalUserId').textContent = userId;
-            document.getElementById('modalType').textContent = type;
-            document.getElementById('modalTimestamp').textContent = timestamp;
-            document.getElementById('messageContent').textContent = message;
-        });
-    }
-    
-    // Handle refresh button
-    const refreshBtn = document.getElementById('refreshBtn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', function() {
-            location.reload();
-        });
-    }
-});
+    document.addEventListener('DOMContentLoaded', function () {
+        // Handle message view modal
+        const viewMessageModal = document.getElementById('viewMessageModal');
+        if (viewMessageModal) {
+            viewMessageModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const message = button.getAttribute('data-message');
+                const userId = button.getAttribute('data-user-id');
+                const type = button.getAttribute('data-type');
+                const timestamp = button.getAttribute('data-timestamp');
+
+                document.getElementById('modalUserId').textContent = userId;
+                document.getElementById('modalType').textContent = type;
+                document.getElementById('modalTimestamp').textContent = timestamp;
+                document.getElementById('messageContent').textContent = message;
+            });
+        }
+
+        // Handle refresh button
+        const refreshBtn = document.getElementById('refreshBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', function () {
+                location.reload();
+            });
+        }
+    });
 </script>
 {% endblock %}

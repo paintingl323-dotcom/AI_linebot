@@ -39,7 +39,7 @@
                             </tr>
                         </thead>
                         <tbody id="escalationTableBody">
-                            {% if not pending %}
+                            {% if not pending.items %}
                             <tr>
                                 <td colspan="6" class="text-center py-5 text-muted">
                                     <i class="fas fa-check-circle fa-3x mb-3 d-block opacity-25"></i>
@@ -47,7 +47,7 @@
                                 </td>
                             </tr>
                             {% else %}
-                            {% for esc in pending %}
+                            {% for esc in pending.items %}
                             <tr id="esc-row-{{ esc.id }}">
                                 <td class="ps-4"><input type="checkbox"
                                         class="esc-checkbox form-check-input border-dark" data-id="{{ esc.id }}"></td>
@@ -81,6 +81,42 @@
                     </table>
                 </div>
             </div>
+            <!-- Pagination -->
+            {% if pending.pages > 1 %}
+            <div class="card-footer bg-white border-top border-dark py-3">
+                <nav aria-label="Page navigation">
+                    <ul class="pagination pagination-sm justify-content-center mb-0">
+                        <li class="page-item {% if not pending.has_prev %}disabled{% endif %}">
+                            <a class="page-link border-dark text-dark"
+                                href="{{ url_for('admin.escalation_list', page=pending.prev_num) if pending.has_prev else '#' }}"
+                                aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+
+                        {% for page_num in pending.iter_pages(left_edge=1, right_edge=1, left_current=2,
+                        right_current=2) %}
+                        {% if page_num %}
+                        <li class="page-item {% if page_num == pending.page %}active{% endif %}">
+                            <a class="page-link {% if page_num == pending.page %}bg-dark border-dark text-white{% else %}border-dark text-dark{% endif %}"
+                                href="{{ url_for('admin.escalation_list', page=page_num) }}">{{ page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled"><span class="page-link border-dark text-dark">...</span></li>
+                        {% endif %}
+                        {% endfor %}
+
+                        <li class="page-item {% if not pending.has_next %}disabled{% endif %}">
+                            <a class="page-link border-dark text-dark"
+                                href="{{ url_for('admin.escalation_list', page=pending.next_num) if pending.has_next else '#' }}"
+                                aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
             {% if pending %}
             <div class="card-footer bg-white border-top border-dark py-3 ps-4">
                 <button id="deleteSelectedBtn" class="btn btn-danger btn-sm rounded-0 px-4" disabled>

@@ -74,7 +74,7 @@ class EmailSettingsForm(FlaskForm):
 
 class DocumentForm(FlaskForm):
     """Form for adding documents to the knowledge base"""
-    title = StringField('Document Title', validators=[DataRequired()])
+    title = StringField('Document Title', validators=[Optional()])
     content = TextAreaField('Document Content', validators=[Optional()])
     file = FileField('Upload File (Select Multiple)', validators=[
         Optional(),

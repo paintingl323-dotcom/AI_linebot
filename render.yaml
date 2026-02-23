@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: ai-line-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT main:app
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ai-line-bot-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
+databases:
+  - name: ai-line-bot-db
+    plan: free

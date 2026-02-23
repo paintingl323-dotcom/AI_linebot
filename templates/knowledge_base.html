@@ -39,7 +39,8 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for doc in documents %}
+                            {% if documents %}
+                            {% for doc in documents.items %}
                             <tr>
                                 <td>{{ doc.title }}</td>
                                 <td>{{ doc.filename if doc.filename else '直接輸入' }}</td>
@@ -68,15 +69,52 @@
                                     </div>
                                 </td>
                             </tr>
+                            {% endfor %}
                             {% else %}
                             <tr>
                                 <td colspan="5" class="text-center">知識庫中尚無文件</td>
                             </tr>
-                            {% endfor %}
+                            {% endif %}
                         </tbody>
                     </table>
                 </div>
             </div>
+            <!-- Pagination -->
+            {% if documents and documents.pages > 1 %}
+            <div class="card-footer bg-white py-3">
+                <nav aria-label="Page navigation">
+                    <ul class="pagination pagination-sm justify-content-center mb-0">
+                        <li class="page-item {% if not documents.has_prev %}disabled{% endif %}">
+                            <a class="page-link"
+                                href="{{ url_for('admin.knowledge_base', page=documents.prev_num) if documents.has_prev else '#' }}"
+                                aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+
+                        {% for page_num in documents.iter_pages(left_edge=1, right_edge=1, left_current=2,
+                        right_current=2) %}
+                        {% if page_num %}
+                        <li class="page-item {% if page_num == documents.page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('admin.knowledge_base', page=page_num) }}">{{ page_num
+                                }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                        {% endfor %}
+
+                        <li class="page-item {% if not documents.has_next %}disabled{% endif %}">
+                            <a class="page-link"
+                                href="{{ url_for('admin.knowledge_base', page=documents.next_num) if documents.has_next else '#' }}"
+                                aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
         </div>
     </div>
 

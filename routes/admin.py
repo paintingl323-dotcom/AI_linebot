@@ -3,6 +3,7 @@ import logging
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 import csv
 import io
+import datetime
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from models import BotStyle, Config, ChatMessage, Document, LineUser, User, Escalation
@@ -414,12 +415,18 @@ def test_email():
 @admin_required
 def knowledge_base():
     """Knowledge base management page"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
     try:
-        documents = Document.query.order_by(Document.uploaded_at.desc()).all()
+        from models import Document
+        documents = Document.query.order_by(Document.uploaded_at.desc()).paginate(page=page, per_page=per_page)
     except Exception as e:
         logger.error(f"Error loading knowledge base: {e}", exc_info=True)
-        documents = []
+        # Handle empty/error state for pagination object in template if needed
+        documents = None
         flash(f'知識庫載入錯誤：{str(e)}', 'danger')
+    
     form = DocumentForm()
     return render_template('knowledge_base.html', documents=documents, form=form)
 
@@ -525,14 +532,20 @@ def add_document():
             files = request.files.getlist(form.file.name)
             
             # If text content is provided, add it as a separate document
-            if form.content.data and form.title.data:
-                title = form.title.data
+            if form.content.data:
                 content = form.content.data
+                # Auto-generate title if missing
+                title = form.title.data
+                if not title:
+                    taiwan_tz = datetime.timezone(datetime.timedelta(hours=8))
+                    now = datetime.datetime.now(tz=taiwan_tz)
+                    title = f"手動輸入 - {now.strftime('%Y-%m-%d %H:%M')}"
+                
                 success, result = RAGService.add_document(title, content, None)
                 if success:
-                    flash(f'Document "{title}" added successfully.', 'success')
+                    flash(f'已成功加入文件："{title}"', 'success')
                 else:
-                    flash(f'Error adding document "{title}": {result}', 'danger')
+                    flash(f'加入文件 "{title}" 時發生錯誤： {result}', 'danger')
 
             # If files are provided
             if files and files[0].filename:
@@ -544,8 +557,12 @@ def add_document():
                     
                     filename = secure_filename(file.filename)
                     
-                    # Use filename as title if one isn't explicitly provided for the batch
-                    doc_title = filename
+                    # Use provided title for the FIRST file if it's a single upload, 
+                    # otherwise use filename
+                    if len(files) == 1 and form.title.data:
+                        doc_title = form.title.data
+                    else:
+                        doc_title = filename
                     
                     try:
                         # Read file content
@@ -575,9 +592,9 @@ def add_document():
                 if documents_to_add:
                     success, result = RAGService.bulk_add_documents(documents_to_add)
                     if success:
-                        flash(f'Successfully added {len(documents_to_add)} documents. (Background indexing may continue)', 'success')
+                        flash(f'成功加入 {len(documents_to_add)} 份文件。(系統正在背景學習中)', 'success')
                     else:
-                        flash(f'Error processing bulk upload: {result}', 'danger')
+                        flash(f'批量上傳處理出錯： {result}', 'danger')
                 
                 if error_count > 0:
                     flash(f'Failed to process {error_count} files.', 'warning')
@@ -652,7 +669,9 @@ def rebuild_index():
 @admin_required
 def user_management():
     """User management page for admin panel users"""
-    users = User.query.all()
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    users = User.query.order_by(User.id.asc()).paginate(page=page, per_page=per_page)
     form = UserForm()
     return render_template('user_management.html', users=users, form=form)
 
@@ -781,9 +800,12 @@ def get_user(user_id):
 @admin_required
 def escalation_list():
     """List of human escalation requests (critical messages)"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
     try:
-        # Get pending and resolved escalations
-        pending = Escalation.query.filter_by(is_resolved=False).order_by(Escalation.created_at.desc()).all()
+        # Get pending with pagination, resolved with limit
+        pending = Escalation.query.filter_by(is_resolved=False).order_by(Escalation.created_at.desc()).paginate(page=page, per_page=per_page)
         resolved = Escalation.query.filter_by(is_resolved=True).order_by(Escalation.created_at.desc()).limit(50).all()
         
         return render_template('escalation_list.html', pending=pending, resolved=resolved)
