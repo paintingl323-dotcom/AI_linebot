@@ -204,31 +204,7 @@ def handle_text_message(event):
             logger.error(f"Error generating LLM response: {e}", exc_info=True)
             response_text = "抱歉，目前無法處理您的請求。請稍後再試。"
         
-        # --- HUMAN ESCALATION LOGIC ---
-        try:
-            from services.email_service import EmailService
-            
-            # 1. Check Keywords
-            trigger_keywords = ConfigManager.get("ESCALATION_KEYWORDS", "購買,下單,退貨,客服,購買方式")
-            keywords = [k.strip() for k in trigger_keywords.replace("，", ",").split(",") if k.strip()]
-            
-            match = next((k for k in keywords if k in user_message), None)
-            if match:
-                logger.info(f"Escalation triggered by keyword match: {match}")
-                EmailService.notify_escalation(user_id, user_message, f"關鍵字觸發 ({match})")
-            
-            # 2. Check AI Uncertainty or "Human" phrases in response
-            # (If LLM thinks it can't handle it or human is mentioned)
-            human_phrases = ["真人接手", "聯繫客服", "無法處理", "需要人為幫助"]
-            if any(p in response_text for p in human_phrases):
-                logger.info("Escalation triggered by AI response content")
-                EmailService.notify_escalation(user_id, user_message, "AI 建議真人接手")
-        except Exception as e:
-            logger.error(f"Error in escalation logic: {e}")
-        # ------------------------------
-
-        # Save bot response to database
-
+        # Save bot response to database first
         bot_message = ChatMessage(
             line_user_id=user_id,
             is_user_message=False,
@@ -239,7 +215,7 @@ def handle_text_message(event):
         db.session.commit()
         logger.info(f"Bot response saved to database: {bot_message.id}")
         
-        # Send response
+        # Priority: Send response to LINE immediately
         try:
             logger.info(f"Sending response with reply token: {event.reply_token}")
             line_bot_api = get_line_bot_api()
@@ -250,6 +226,31 @@ def handle_text_message(event):
             logger.info("Response sent successfully")
         except Exception as e:
             logger.error(f"Error sending LINE response: {e}", exc_info=True)
+            # Proceed to escalation even if reply fails (the reply token might be invalid/expired, but we still want the alert)
+
+        # --- HUMAN ESCALATION LOGIC (Perform AFTER response to avoid blocking) ---
+        try:
+            from services.email_service import EmailService
+            
+            # 1. Check Keywords
+            trigger_keywords = ConfigManager.get("ESCALATION_KEYWORDS", "購買,下單,退貨,客服,購買方式")
+            keywords = [k.strip() for k in trigger_keywords.replace("，", ",").split(",") if k.strip()]
+            
+            match = next((k for k in keywords if k in user_message), None)
+            if match:
+                logger.info(f"Escalation triggered by keyword match: {match}")
+                # This call handles its own internal disabled-check and try-except
+                EmailService.notify_escalation(user_id, user_message, f"關鍵字觸發 ({match})")
+            
+            # 2. Check AI Uncertainty or "Human" phrases in response
+            human_phrases = ["真人接手", "聯繫客服", "無法處理", "需要人為幫助"]
+            if any(p in response_text for p in human_phrases):
+                logger.info("Escalation triggered by AI response content")
+                EmailService.notify_escalation(user_id, user_message, "AI 建議真人接手")
+        except Exception as e:
+            logger.error(f"Error in escalation logic: {e}")
+        # -------------------------------------------------------------------------
+
     
     except Exception as e:
         logger.error(f"Unhandled exception in handle_text_message: {e}", exc_info=True)
