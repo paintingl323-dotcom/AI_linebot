@@ -12,6 +12,8 @@ from models import LineUser, ChatMessage
 from routes.utils.config_service import ConfigManager
 from services.llm_service import LLMService
 from rag_service import RAGService
+import re
+import threading
 
 webhook_bp = Blueprint('webhook', __name__)
 logger = logging.getLogger(__name__)
@@ -361,7 +363,7 @@ def handle_text_message(event):
                 finally:
                     db.session.remove()
 
-        import threading
+        # Use daemon thread to avoid blocking the webhook response
         threading.Thread(
             target=process_escalation_task, 
             args=(app_obj, user_id, u_display_name, user_message, response_text, keywords_str, ai_reason), 
