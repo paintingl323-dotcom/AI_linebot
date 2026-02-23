@@ -113,16 +113,43 @@ class RAGService:
     # ------------------------------------------------------------------ #
 
     @staticmethod
+    def _embed_docs_in_background(doc_ids, app):
+        """Background thread: generate and save embeddings for a list of doc IDs."""
+        with app.app_context():
+            from app import db
+            from models import Document
+            for doc_id in doc_ids:
+                try:
+                    doc = Document.query.get(doc_id)
+                    if doc and not doc.embedding_json:
+                        embedding = RAGService.get_embedding(doc.content)
+                        if embedding:
+                            doc.embedding_json = json.dumps(embedding)
+                            db.session.commit()
+                            logger.info(f"Background: embedded doc id={doc_id}")
+                except Exception as e:
+                    logger.error(f"Background embedding error for doc {doc_id}: {e}")
+
+    # ------------------------------------------------------------------ #
+    #  Bulk add                                                            #
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
     def bulk_add_documents(documents_list):
         """Add multiple documents from a list of dicts with keys: title, content, filename.
         
+        Documents are saved to the database immediately (fast), and embeddings are
+        generated in a background thread so the user doesn't have to wait.
+        
         Returns (True, count) or (False, error_message).
         """
+        import threading
+        from flask import current_app
         from app import db
         from models import Document
 
         try:
-            saved = 0
+            saved_ids = []
             for item in documents_list:
                 title = item.get("title", "Untitled")
                 content = item.get("content", "")
@@ -138,17 +165,22 @@ class RAGService:
                     is_active=True,
                 )
                 db.session.add(doc)
-                db.session.flush()  # get doc.id without full commit
-
-                embedding = RAGService.get_embedding(content)
-                if embedding:
-                    doc.embedding_json = json.dumps(embedding)
-
                 db.session.commit()
-                saved += 1
-                logger.info(f"Bulk-added document '{title}' (id={doc.id})")
+                saved_ids.append(doc.id)
+                logger.info(f"Bulk-saved document '{title}' (id={doc.id}), embedding pending")
 
-            return True, saved
+            if saved_ids:
+                # Start background thread to generate embeddings without blocking
+                app = current_app._get_current_object()
+                t = threading.Thread(
+                    target=RAGService._embed_docs_in_background,
+                    args=(saved_ids, app),
+                    daemon=True,
+                )
+                t.start()
+                logger.info(f"Started background embedding thread for {len(saved_ids)} documents")
+
+            return True, len(saved_ids)
 
         except Exception as e:
             logger.error(f"Error in bulk_add_documents: {e}", exc_info=True)
