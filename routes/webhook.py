@@ -272,13 +272,17 @@ def handle_text_message(event):
                     from services.email_service import EmailService
                     from models import Escalation
                     
+                    logger.info(f"[Escalation Check] Starting for user {u_id}. Message: {u_msg}")
+                    
                     # 1. Check Keywords
                     trigger_keywords = ConfigManager.get("ESCALATION_KEYWORDS", "購買,下單,匯款,轉帳,價格,多少錢,現貨,怎麼買,沒收到,寄錯,瑕疵,退貨,換貨,不滿,客服,找人,真人,聯絡我,緊急")
+                    logger.info(f"[Escalation Check] Trigger keywords from config: {trigger_keywords}")
+                    
                     keywords = [k.strip() for k in trigger_keywords.replace("，", ",").split(",") if k.strip()]
                     
                     match = next((k for k in keywords if k in u_msg), None)
                     if match:
-                        logger.info(f"Escalation triggered by keyword match: {match}")
+                        logger.info(f"[Escalation Check] Match found: {match}")
                         new_esc = Escalation(
                             line_user_id=u_id,
                             user_display_name=l_user_profile.display_name,
@@ -287,12 +291,20 @@ def handle_text_message(event):
                         )
                         db.session.add(new_esc)
                         db.session.commit()
-                        EmailService.notify_escalation(u_id, u_msg, f"關鍵字觸發 ({match})")
+                        logger.info(f"[Escalation Check] Saved to DB. ID: {new_esc.id}")
+                        
+                        try:
+                            EmailService.notify_escalation(u_id, u_msg, f"關鍵字觸發 ({match})")
+                            logger.info("[Escalation Check] Email notification sent")
+                        except Exception as email_err:
+                            logger.error(f"[Escalation Check] Email notification failed: {email_err}")
+                    else:
+                        logger.info("[Escalation Check] No keyword match found")
                     
                     # 2. Check AI Content
                     human_phrases = ["真人接手", "聯繫客服", "無法處理", "需要人為幫助"]
                     if any(p in r_text for p in human_phrases):
-                        logger.info("Escalation triggered by AI response content")
+                        logger.info("[Escalation Check] AI content trigger detected")
                         new_esc = Escalation(
                             line_user_id=u_id,
                             user_display_name=l_user_profile.display_name,
@@ -301,12 +313,20 @@ def handle_text_message(event):
                         )
                         db.session.add(new_esc)
                         db.session.commit()
-                        EmailService.notify_escalation(u_id, u_msg, "AI 建議真人接手")
+                        logger.info(f"[Escalation Check] Saved to DB (AI Trigger). ID: {new_esc.id}")
+                        
+                        try:
+                            EmailService.notify_escalation(u_id, u_msg, "AI 建議真人接手")
+                            logger.info("[Escalation Check] Email notification sent (AI Trigger)")
+                        except Exception as email_err:
+                            logger.error(f"[Escalation Check] Email notification failed (AI Trigger): {email_err}")
                 except Exception as ex:
-                    logger.error(f"Async escalation error: {ex}")
+                    logger.error(f"[Escalation Check] CRITICAL ERROR: {ex}", exc_info=True)
 
         import threading
-        threading.Thread(target=process_escalation_async, args=(user_id, user_message, response_text, line_user), daemon=True).start()
+        # Ensure thread has necessary objects
+        t = threading.Thread(target=process_escalation_async, args=(user_id, user_message, response_text, line_user), daemon=True)
+        t.start()
         # -------------------------------------------------------------------------
 
 
