@@ -57,7 +57,12 @@
                         <div class="col-md-6">
                             <label for="smtp_pass" class="form-label fw-bold small text-uppercase">SMTP 密碼
                                 (應用程式密碼)</label>
+                            {% if has_password %}
+                            {{ form.smtp_pass(class="form-control rounded-0 border-dark", id="smtp_pass",
+                            placeholder="******** (已儲存，若不修改請留空)") }}
+                            {% else %}
                             {{ form.smtp_pass(class="form-control rounded-0 border-dark", id="smtp_pass") }}
+                            {% endif %}
                             <div class="form-text small">若使用 Gmail，請務必使用「應用程式密碼」。</div>
                         </div>
                     </div>

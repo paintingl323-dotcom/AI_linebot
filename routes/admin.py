@@ -367,7 +367,10 @@ def notification_settings():
             flash('通知設定已更新。', 'success')
             return redirect(url_for('admin.notification_settings'))
             
-        return render_template('notification_settings.html', form=form)
+        # Check if password exists for UI display
+        has_password = bool(ConfigManager.get("SMTP_PASS", ""))
+        
+        return render_template('notification_settings.html', form=form, has_password=has_password)
     except Exception as e:
         logger.error(f"Error in notification_settings route: {e}", exc_info=True)
         return f"通知設定頁面啟動失敗，錯誤內容: {str(e)}", 500
