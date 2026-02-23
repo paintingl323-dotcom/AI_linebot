@@ -2,13 +2,13 @@
  * Knowledge Base JavaScript for FlyPig LINE Bot Admin
  */
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Initialize view document functionality
     initViewDocument();
-    
+
     // Initialize delete document functionality
     initDeleteDocument();
-    
+
     // Initialize file upload functionality
     initFileUpload();
 });
@@ -20,17 +20,17 @@ function initViewDocument() {
     const viewButtons = document.querySelectorAll('.view-document');
     const documentTitle = document.getElementById('documentTitle');
     const documentContent = document.getElementById('documentContent');
-    
+
     viewButtons.forEach(button => {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function () {
             const docId = this.getAttribute('data-id');
-            
+
             // Show loading state
             documentTitle.textContent = 'Loading...';
             documentContent.textContent = 'Loading document content...';
-            
+
             // Fetch document data
-            fetch(`/knowledge_base/view/${docId}`)
+            fetch(`/admin/knowledge_base/view/${docId}`)
                 .then(response => response.json())
                 .then(doc => {
                     // Update modal with document data
@@ -53,14 +53,14 @@ function initDeleteDocument() {
     const deleteButtons = document.querySelectorAll('.delete-document');
     const deleteForm = document.getElementById('deleteDocumentForm');
     const deleteDocumentTitle = document.getElementById('deleteDocumentTitle');
-    
+
     deleteButtons.forEach(button => {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function () {
             const docId = this.getAttribute('data-id');
             const docTitle = this.getAttribute('data-title');
-            
+
             // Set form action and document title
-            deleteForm.action = `/knowledge_base/delete/${docId}`;
+            deleteForm.action = `/admin/knowledge_base/delete/${docId}`;
             deleteDocumentTitle.textContent = docTitle;
         });
     });
@@ -73,13 +73,13 @@ function initFileUpload() {
     const fileInput = document.getElementById('file');
     const titleInput = document.getElementById('title');
     const contentInput = document.getElementById('content');
-    
+
     if (!fileInput || !titleInput || !contentInput) return;
-    
-    fileInput.addEventListener('change', function() {
+
+    fileInput.addEventListener('change', function () {
         const file = this.files[0];
         if (!file) return;
-        
+
         // Set the title from the filename if empty
         if (titleInput.value.trim() === '') {
             // Remove extension and replace underscores/hyphens with spaces
@@ -87,14 +87,14 @@ function initFileUpload() {
             // Capitalize first letter of each word
             titleInput.value = fileName.replace(/\b\w/g, l => l.toUpperCase());
         }
-        
+
         // Handle text file preview
-        if (file.type === 'text/plain' || 
-            file.name.endsWith('.md') || 
+        if (file.type === 'text/plain' ||
+            file.name.endsWith('.md') ||
             file.name.endsWith('.txt')) {
-            
+
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function (e) {
                 contentInput.value = e.target.result;
             };
             reader.readAsText(file);
@@ -112,11 +112,11 @@ function initFileUpload() {
  */
 function formatFileSize(bytes) {
     if (bytes === 0) return '0 Bytes';
-    
+
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
+
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
@@ -127,12 +127,12 @@ function formatFileSize(bytes) {
  */
 function getContentPreview(content) {
     const maxPreviewLength = 200;
-    
+
     if (!content) return '';
-    
+
     if (content.length > maxPreviewLength) {
         return content.substring(0, maxPreviewLength) + '...';
     }
-    
+
     return content;
 }
