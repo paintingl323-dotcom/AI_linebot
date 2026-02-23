@@ -272,64 +272,69 @@ def handle_text_message(event):
         except Exception as e:
             logger.error(f"Error sending LINE response: {e}", exc_info=True)
 
-        # --- HUMAN ESCALATION LOGIC (Asynchronous but safe) ---
-        # Pass only strings to avoid DetachedInstanceError in background thread
+        # --- HUMAN ESCALATION LOGIC (Asynchronous & Context-Safe) ---
+        # Senior Backend: Pre-fetch data and app-object outside the thread
         u_display_name = line_user.display_name or "未知用戶"
+        app_obj = current_app._get_current_object()
         
-        def process_escalation_async(u_id, u_disp_name, u_msg, r_text):
-            with current_app.app_context():
+        # Pre-fetch keywords to avoid database access in thread if possible
+        keywords_str = ConfigManager.get("ESCALATION_KEYWORDS", "購買,下單,匯款,轉帳,價格,多少錢,現貨,怎麼買,沒收到,寄錯,瑕疵,退貨,換貨,不滿,客服,找人,真人,聯絡我,緊急")
+        
+        def process_escalation_task(app_instance, u_id, u_disp_name, u_msg, r_text, target_keywords_str):
+            with app_instance.app_context():
                 try:
                     from services.email_service import EmailService
                     from models import Escalation
                     
-                    logger.info(f"[Escalation Check] Starting for user {u_id} ({u_disp_name})")
-                    
                     # 1. Check Keywords
-                    trigger_keywords = ConfigManager.get("ESCALATION_KEYWORDS", "購買,下單,匯款,轉帳,價格,多少錢,現貨,怎麼買,沒收到,寄錯,瑕疵,退貨,換貨,不滿,客服,找人,真人,聯絡我,緊急")
-                    keywords = [k.strip() for k in trigger_keywords.replace("，", ",").split(",") if k.strip()]
+                    keywords = [k.strip() for k in target_keywords_str.replace("，", ",").split(",") if k.strip()]
                     
+                    # More robust matching
                     match = next((k for k in keywords if k.lower() in u_msg.lower()), None)
                     if match:
-                        logger.info(f"[Escalation Check] Keyword match found: {match}")
-                        new_esc = Escalation(
+                        logger.info(f"[Escalation] Keyword triggered: {match}")
+                        esc = Escalation(
                             line_user_id=u_id,
                             user_display_name=u_disp_name,
                             message_text=u_msg,
                             reason=f"關鍵字觸發 ({match})"
                         )
-                        db.session.add(new_esc)
+                        db.session.add(esc)
                         db.session.commit()
                         
                         try:
                             EmailService.notify_escalation(u_id, u_msg, f"關鍵字觸發 ({match})")
-                        except Exception as email_err:
-                            logger.error(f"[Escalation Check] Email failed: {email_err}")
+                        except Exception as e:
+                            logger.error(f"[Escalation] Email error: {e}")
                     
                     # 2. Check AI Content
                     human_phrases = ["真人接手", "聯繫客服", "無法處理", "需要人為幫助"]
                     ai_trigger = next((p for p in human_phrases if p in r_text), None)
                     if ai_trigger:
-                        logger.info(f"[Escalation Check] AI content trigger: {ai_trigger}")
-                        new_esc = Escalation(
+                        logger.info(f"[Escalation] AI content triggered: {ai_trigger}")
+                        esc = Escalation(
                             line_user_id=u_id,
                             user_display_name=u_disp_name,
                             message_text=u_msg,
                             reason=f"AI 建議真人接手 ({ai_trigger})"
                         )
-                        db.session.add(new_esc)
+                        db.session.add(esc)
                         db.session.commit()
                         
                         try:
                             EmailService.notify_escalation(u_id, u_msg, f"AI 建議真人接手 ({ai_trigger})")
-                        except Exception as email_err:
-                            logger.error(f"[Escalation Check] AI Trigger email failed: {email_err}")
+                        except Exception as e:
+                            logger.error(f"[Escalation] AI Email error: {e}")
+                            
                 except Exception as ex:
-                    logger.error(f"[Escalation Check] ERROR: {ex}", exc_info=True)
+                    logger.error(f"[Escalation] Thread execution failed: {ex}", exc_info=True)
+                finally:
+                    db.session.remove() # Clean up session in thread
 
         import threading
         threading.Thread(
-            target=process_escalation_async, 
-            args=(user_id, u_display_name, user_message, response_text), 
+            target=process_escalation_task, 
+            args=(app_obj, user_id, u_display_name, user_message, response_text, keywords_str), 
             daemon=True
         ).start()
         # -------------------------------------------------------------------------
