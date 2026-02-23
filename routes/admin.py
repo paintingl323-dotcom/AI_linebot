@@ -57,6 +57,9 @@ def dashboard():
     gemini_key = ConfigManager.get("GEMINI_API_KEY", "")
     api_status = "Configured" if gemini_key else "Not Configured"
     
+    # Get RAG status
+    rag_enabled = ConfigManager.get("RAG_ENABLED", "True") == "True"
+    
     # Detect database type for persistence warning
     is_sqlite = db.engine.url.drivername == 'sqlite'
     
