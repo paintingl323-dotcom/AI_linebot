@@ -407,6 +407,14 @@ def parse_line_csv_content(csv_text):
         line = f"[{timestamp}] {sender}: {message}" if timestamp else f"{sender}: {message}"
         output.append(line)
         
+    return "\n".join(output)
+
+
+@admin_bp.route('/knowledge_base/add', methods=['POST'])
+@admin_required
+def add_document():
+    """Add document(s) to the knowledge base"""
+    form = DocumentForm()
     
     try:
         # We need to manually handle validation for multiple files if Flask-WTF doesn't fully support it
