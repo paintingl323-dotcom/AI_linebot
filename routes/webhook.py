@@ -226,50 +226,49 @@ def handle_text_message(event):
             logger.info("Response sent successfully")
         except Exception as e:
             logger.error(f"Error sending LINE response: {e}", exc_info=True)
-            # Proceed to escalation even if reply fails (the reply token might be invalid/expired, but we still want the alert)
 
-        # --- HUMAN ESCALATION LOGIC (Perform AFTER response to avoid blocking) ---
-        try:
-            from services.email_service import EmailService
-            from models import Escalation
-            
-            # 1. Check Keywords
-            trigger_keywords = ConfigManager.get("ESCALATION_KEYWORDS", "購買,下單,退貨,客服,購買方式")
-            keywords = [k.strip() for k in trigger_keywords.replace("，", ",").split(",") if k.strip()]
-            
-            match = next((k for k in keywords if k in user_message), None)
-            if match:
-                logger.info(f"Escalation triggered by keyword match: {match}")
-                # Save to Database for internal dashboard
-                new_esc = Escalation(
-                    line_user_id=user_id,
-                    user_display_name=line_user.display_name,
-                    message_text=user_message,
-                    reason=f"關鍵字觸發 ({match})"
-                )
-                db.session.add(new_esc)
-                db.session.commit()
-                
-                # Still try to send email as backup
-                EmailService.notify_escalation(user_id, user_message, f"關鍵字觸發 ({match})")
-            
-            # 2. Check AI Uncertainty or "Human" phrases in response
-            human_phrases = ["真人接手", "聯繫客服", "無法處理", "需要人為幫助"]
-            if any(p in response_text for p in human_phrases):
-                logger.info("Escalation triggered by AI response content")
-                # Save to Database
-                new_esc = Escalation(
-                    line_user_id=user_id,
-                    user_display_name=line_user.display_name,
-                    message_text=user_message,
-                    reason="AI 建議真人接手"
-                )
-                db.session.add(new_esc)
-                db.session.commit()
-                
-                EmailService.notify_escalation(user_id, user_message, "AI 建議真人接手")
-        except Exception as e:
-            logger.error(f"Error in escalation logic: {e}")
+        # --- HUMAN ESCALATION LOGIC (Asynchronous to avoid blocking LINE reply) ---
+        def process_escalation_async(u_id, u_msg, r_text, l_user_profile):
+            with current_app.app_context():
+                try:
+                    from services.email_service import EmailService
+                    from models import Escalation
+                    
+                    # 1. Check Keywords
+                    trigger_keywords = ConfigManager.get("ESCALATION_KEYWORDS", "購買,下單,退貨,客服,購買方式")
+                    keywords = [k.strip() for k in trigger_keywords.replace("，", ",").split(",") if k.strip()]
+                    
+                    match = next((k for k in keywords if k in u_msg), None)
+                    if match:
+                        logger.info(f"Escalation triggered by keyword match: {match}")
+                        new_esc = Escalation(
+                            line_user_id=u_id,
+                            user_display_name=l_user_profile.display_name,
+                            message_text=u_msg,
+                            reason=f"關鍵字觸發 ({match})"
+                        )
+                        db.session.add(new_esc)
+                        db.session.commit()
+                        EmailService.notify_escalation(u_id, u_msg, f"關鍵字觸發 ({match})")
+                    
+                    # 2. Check AI Content
+                    human_phrases = ["真人接手", "聯繫客服", "無法處理", "需要人為幫助"]
+                    if any(p in r_text for p in human_phrases):
+                        logger.info("Escalation triggered by AI response content")
+                        new_esc = Escalation(
+                            line_user_id=u_id,
+                            user_display_name=l_user_profile.display_name,
+                            message_text=u_msg,
+                            reason="AI 建議真人接手"
+                        )
+                        db.session.add(new_esc)
+                        db.session.commit()
+                        EmailService.notify_escalation(u_id, u_msg, "AI 建議真人接手")
+                except Exception as ex:
+                    logger.error(f"Async escalation error: {ex}")
+
+        import threading
+        threading.Thread(target=process_escalation_async, args=(user_id, user_message, response_text, line_user), daemon=True).start()
         # -------------------------------------------------------------------------
 
 

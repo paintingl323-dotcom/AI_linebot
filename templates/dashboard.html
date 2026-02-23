@@ -170,6 +170,20 @@
     </div>
 
     <div class="col-md-6 mb-4">
+        <a href="{{ url_for('admin.escalation_list') }}" class="text-decoration-none">
+            <div class="card h-100 hover-effect border-danger">
+                <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-1 text-danger">關鍵訊息看板</h4>
+                        <p class="text-muted mb-0 small">需要真人接手的對話</p>
+                    </div>
+                    <i class="fas fa-exclamation-circle fa-lg text-danger"></i>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 mb-4">
         <a href="{{ url_for('admin.knowledge_base') }}" class="text-decoration-none">
             <div class="card h-100 hover-effect">
                 <div class="card-body p-4 d-flex justify-content-between align-items-center">
