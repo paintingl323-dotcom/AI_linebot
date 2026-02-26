@@ -87,6 +87,7 @@ class LLMService:
 當前時間是 {date_info['full_time']}。
 如果用戶詢問當前日期或時間,請使用以上信息回答。
 """
+        personalization_prompt = f"用戶的名稱為: {user_name}。請在對話中自然地稱呼用戶。" if user_name else ""
 
         # Consolidate and Streamline Prompt for Speed
         system_prompt = f"""{style.prompt}
