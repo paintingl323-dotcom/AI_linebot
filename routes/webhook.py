@@ -239,54 +239,22 @@ def handle_text_message(event):
             
             # Clean text for sending to user (strip escalation tags)
             clean_response = re.sub(escalate_pattern, '', response_text).strip()
+            
+            # Filter out any possible image tags that the LLM might still generate
+            clean_response = re.sub(r'\[IMAGE:.*?\]', '', clean_response).strip()
+            clean_response = re.sub(r'!\[.*?\]\(.*?\)', '', clean_response).strip()
+            clean_response = re.sub(r'<img.*?>', '', clean_response).strip()
+
             if not clean_response:
                 clean_response = "這是一則系統提醒（AI 偵測到重要意圖並非直接回應內容）。" if ai_reason else "抱歉，我現在無法生成回應。"
             
-            # Parse response for multiple messages (text and images)
-            messages_to_send = []
-            
-            # Find image tags in the clean text
-            image_pattern = r'\[IMAGE:\s*(https?://[^\s\]]+)\]'
-            image_matches = list(re.finditer(image_pattern, clean_response))
-            
-            if image_matches:
-                # Split text by image tags and create multiple message objects
-                last_end = 0
-                for match in image_matches:
-                    start, end = match.span()
-                    # Add preceding text if not empty
-                    text_part = clean_response[last_end:start].strip()
-                    if text_part:
-                        messages_to_send.append(TextSendMessage(text=text_part))
-                    
-                    # Add the image
-                    image_url = match.group(1).strip()
-                    if image_url:
-                        messages_to_send.append(ImageSendMessage(
-                            original_content_url=image_url,
-                            preview_image_url=image_url
-                        ))
-                    last_end = end
-                
-                # Add remaining text if any
-                remaining_text = clean_response[last_end:].strip()
-                if remaining_text:
-                    messages_to_send.append(TextSendMessage(text=remaining_text))
-            else:
-                # No images found, send clean text
-                messages_to_send.append(TextSendMessage(text=clean_response))
-            
-            # Respect LINE's 5 message limit per reply
-            messages_to_send = [m for m in messages_to_send if m][:5]
-            
-            if not messages_to_send:
-                messages_to_send = [TextSendMessage(text=clean_response)]
+            messages_to_send = [TextSendMessage(text=clean_response)]
             
             line_bot_api.reply_message(
                 event.reply_token,
                 messages_to_send
             )
-            logger.info(f"Multi-message response sent successfully ({len(messages_to_send)} bubbles)")
+            logger.info("Bot response sent successfully as pure text")
         except Exception as e:
             logger.error(f"Error sending LINE response: {e}", exc_info=True)
 
